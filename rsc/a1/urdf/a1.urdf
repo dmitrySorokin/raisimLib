@@ -221,6 +221,9 @@
       <geometry>
         <sphere radius="0.02"/>
       </geometry>
+      <material name="">
+        <contact name="rubber"/>
+      </material>
     </collision>
     <inertial>
       <mass value="0.06"/>
@@ -373,6 +376,9 @@
       <geometry>
         <sphere radius="0.02"/>
       </geometry>
+      <material name="">
+        <contact name="rubber"/>
+      </material>
     </collision>
     <inertial>
       <mass value="0.06"/>
@@ -525,6 +531,9 @@
       <geometry>
         <sphere radius="0.02"/>
       </geometry>
+      <material name="">
+        <contact name="rubber"/>
+      </material>
     </collision>
     <inertial>
       <mass value="0.06"/>
@@ -677,6 +686,9 @@
       <geometry>
         <sphere radius="0.02"/>
       </geometry>
+      <material name="">
+        <contact name="rubber"/>
+      </material>
     </collision>
     <inertial>
       <mass value="0.06"/>

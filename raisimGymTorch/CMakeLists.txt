@@ -68,6 +68,8 @@ elseif(WIN32)
 endif()
 
 find_package(raisim CONFIG REQUIRED)
+find_package(OpenMP REQUIRED)
+
 
 #######################
 ### src and linking ###
@@ -78,7 +80,7 @@ set(RAISIMGYM_ENV_DIR ${CMAKE_CURRENT_SOURCE_DIR}/raisimGymTorch/env/envs)
 ######## Env ##########
 FOREACH(subdir ${SUBDIRS})
     pybind11_add_module(${subdir} raisimGymTorch/env/raisim_gym.cpp raisimGymTorch/env/Yaml.cpp)
-    target_link_libraries(${subdir} PRIVATE raisim::raisim ${Dependencies})
+    target_link_libraries(${subdir} PRIVATE raisim::raisim ${Dependencies} OpenMP::OpenMP_CXX)
     target_include_directories(${subdir} PUBLIC ${EIGEN3_INCLUDE_DIRS} ${RAISIMGYM_ENV_DIR}/${subdir} ${CMAKE_CURRENT_SOURCE_DIR}/raisimGymTorch/env)
     target_compile_options(${subdir} PRIVATE -fPIC -O3 -flto -mno-avx2)
     target_compile_definitions(${subdir} PRIVATE "-DRAISIMGYM_TORCH_ENV_NAME=${subdir}")
