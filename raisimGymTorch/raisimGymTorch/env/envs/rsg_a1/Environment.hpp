@@ -53,7 +53,7 @@ class ENVIRONMENT : public RaisimGymEnv {
     pTarget_.setZero(gcDim_); vTarget_.setZero(gvDim_); pTarget12_.setZero(nJoints_);
 
     /// this is nominal configuration of anymal
-    gc_init_ << 0, 0, 0.50, 1.0, 0.0, 0.0, 0.0, 0.03, 0.4, -0.8, -0.03, 0.4, -0.8, 0.03, -0.4, 0.8, -0.03, -0.4, 0.8;
+    gc_init_ << 0.0, 0.0, 0.39, 1.0, 0.0, 0.0, 0.0, 0.06, 0.6, -1.2, -0.06, 0.6, -1.2, 0.06, 0.6, -1.2, -0.06, 0.6, -1.2;
 
     /// set pd gains
     Eigen::VectorXd jointPgain(gvDim_), jointDgain(gvDim_);
@@ -142,10 +142,12 @@ class ENVIRONMENT : public RaisimGymEnv {
   bool isTerminalState(float& terminalReward) final {
     terminalReward = float(terminalRewardCoeff_);
 
-    /// if the contact body is not feet
-    for(auto& contact: anymal_->getContacts())
-      if(footIndices_.find(contact.getlocalBodyIndex()) == footIndices_.end())
+    // Terminal condition
+    double euler_angles[3];
+    raisim::quatToEulerVec(&gc_[3], euler_angles);
+    if (gc_[2] < 0.28 || fabs(euler_angles[0]) > 0.4 || fabs(euler_angles[1]) > 0.2)  {
         return true;
+    }
 
     terminalReward = 0.f;
     return false;
