@@ -22,7 +22,7 @@ class ENVIRONMENT : public RaisimGymEnv {
     world_ = std::make_unique<raisim::World>();
 
     /// add objects
-    anymal_ = world_->addArticulatedSystem(resourceDir_+"/anymal/urdf/anymal.urdf");
+    anymal_ = world_->addArticulatedSystem(resourceDir_+"/a1/urdf/a1.urdf");
     anymal_->setName("anymal");
     anymal_->setControlMode(raisim::ControlMode::PD_PLUS_FEEDFORWARD_TORQUE);
     world_->addGround();

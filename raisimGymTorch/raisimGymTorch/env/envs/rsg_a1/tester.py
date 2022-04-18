@@ -1,5 +1,5 @@
 from ruamel.yaml import YAML, dump, RoundTripDumper
-from raisimGymTorch.env.bin import rsg_anymal
+from raisimGymTorch.env.bin import rsg_a1
 from raisimGymTorch.env.RaisimGymVecEnv import RaisimGymVecEnv as VecEnv
 import raisimGymTorch.algo.ppo.module as ppo_module
 import os
@@ -24,7 +24,7 @@ cfg = YAML().load(open(task_path + "/cfg.yaml", 'r'))
 # create environment from the configuration file
 cfg['environment']['num_envs'] = 1
 
-env = VecEnv(rsg_anymal.RaisimGymEnv(home_path + "/rsc", dump(cfg['environment'], Dumper=RoundTripDumper)), cfg['environment'])
+env = VecEnv(rsg_a1.RaisimGymEnv(home_path + "/rsc", dump(cfg['environment'], Dumper=RoundTripDumper)), cfg['environment'])
 
 # shortcuts
 ob_dim = env.num_obs
@@ -49,7 +49,7 @@ else:
 
     print("Visualizing and evaluating the policy: ", weight_path)
     loaded_graph = ppo_module.MLP(cfg['architecture']['policy_net'], torch.nn.LeakyReLU, ob_dim, act_dim)
-    loaded_graph.load_state_dict(torch.load(weight_path)['actor_architecture_state_dict'])
+    loaded_graph.load_state_dict(torch.load(weight_path, map_location='cpu')['actor_architecture_state_dict'])
 
     env.load_scaling(weight_dir, int(iteration_number))
     env.turn_on_visualization()
