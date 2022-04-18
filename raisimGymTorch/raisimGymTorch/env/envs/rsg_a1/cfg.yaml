@@ -15,6 +15,16 @@ environment:
       coeff: 0.3
     torque:
       coeff: -4e-5
+  terrain:
+    frequency: 1.0
+    zScale: 0.2
+    xSize: 40.0
+    ySize: 40.0
+    xSamples: 200
+    ySamples: 200
+    fractalOctaves: 8
+    fractalLacunarity: 4.0
+    fractalGain: 0.9
 
 architecture:
   policy_net: [128, 128]

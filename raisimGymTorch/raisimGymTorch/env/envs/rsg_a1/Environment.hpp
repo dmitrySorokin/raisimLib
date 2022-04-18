@@ -25,7 +25,22 @@ class ENVIRONMENT : public RaisimGymEnv {
     anymal_ = world_->addArticulatedSystem(resourceDir_+"/a1/urdf/a1.urdf");
     anymal_->setName("anymal");
     anymal_->setControlMode(raisim::ControlMode::PD_PLUS_FEEDFORWARD_TORQUE);
-    world_->addGround();
+
+    // Terrain
+    // auto ground = world_->addGround(); // Flat terrain
+    raisim::TerrainProperties terrainProperties; // Randomized terrain
+    terrainProperties.frequency = cfg["terrain"]["frequency"].template As<double>();
+    terrainProperties.zScale    = cfg["terrain"]["zScale"].template As<double>();
+    terrainProperties.xSize     = cfg["terrain"]["xSize"].template As<double>();
+    terrainProperties.ySize     = cfg["terrain"]["ySize"].template As<double>();
+    terrainProperties.xSamples  = cfg["terrain"]["xSamples"].template As<size_t>();
+    terrainProperties.ySamples  = cfg["terrain"]["ySamples"].template As<size_t>();
+    terrainProperties.fractalOctaves    = cfg["terrain"]["fractalOctaves"].template As<size_t>();
+    terrainProperties.fractalLacunarity = cfg["terrain"]["fractalLacunarity"].template As<double>();
+    terrainProperties.fractalGain       = cfg["terrain"]["fractalGain"].template As<double>();
+
+    auto hm = world_->addHeightMap(0.0, 0.0, terrainProperties);
+
 
     /// get robot data
     gcDim_ = anymal_->getGeneralizedCoordinateDim();
