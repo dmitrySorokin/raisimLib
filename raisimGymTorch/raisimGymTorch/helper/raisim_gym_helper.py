@@ -53,7 +53,7 @@ def load_param(weight_path, env, actor, critic, optimizer, data_dir):
     env.load_scaling(weight_dir, iteration_number)
 
     # load actor and critic parameters from full checkpoint
-    checkpoint = torch.load(weight_path)
+    checkpoint = torch.load(weight_path, map_location='cpu')
     actor.architecture.load_state_dict(checkpoint['actor_architecture_state_dict'])
     actor.distribution.load_state_dict(checkpoint['actor_distribution_state_dict'])
     critic.architecture.load_state_dict(checkpoint['critic_architecture_state_dict'])
