@@ -9,11 +9,26 @@
 #include <set>
 #include "../../RaisimGymEnv.hpp"
 
+/* Convention
+*
+*   observation space = [ height,                       n =  1, si (start index) =  0
+*                         body roll,,                   n =  1, si =  1
+*                         body pitch,,                  n =  1, si =  2
+*                         joint angles,                 n = 12, si =  3
+*                         body Linear velocities,       n =  3, si = 15
+*                         body Angular velocities,      n =  3, si = 18
+*                         joint velocities,             n = 12, si = 21
+*                         contacts binary vector,       n =  4, si = 33
+*                         previous action,              n = 12, si = 37 ] total 49
+*
+*   action space      = [ joint angles                  n = 12, si =  0 ] total 12
+*/
+
 namespace raisim {
 
 class ENVIRONMENT : public RaisimGymEnv {
 
- public:
+public:
 
   explicit ENVIRONMENT(const std::string& resourceDir, const Yaml::Node& cfg, bool visualizable) :
       RaisimGymEnv(resourceDir, cfg), visualizable_(visualizable), normDist_(0, 1) {
@@ -22,9 +37,9 @@ class ENVIRONMENT : public RaisimGymEnv {
     world_ = std::make_unique<raisim::World>();
 
     /// add objects
-    anymal_ = world_->addArticulatedSystem(resourceDir_+"/a1/urdf/a1.urdf");
-    anymal_->setName("anymal");
-    anymal_->setControlMode(raisim::ControlMode::PD_PLUS_FEEDFORWARD_TORQUE);
+    a1_ = world_->addArticulatedSystem(resourceDir_+"/a1/urdf/a1.urdf");
+    a1_->setName("anymal");
+    a1_->setControlMode(raisim::ControlMode::PD_PLUS_FEEDFORWARD_TORQUE);
 
     // Terrain
     // auto ground = world_->addGround(); // Flat terrain
@@ -43,8 +58,8 @@ class ENVIRONMENT : public RaisimGymEnv {
 
 
     /// get robot data
-    gcDim_ = anymal_->getGeneralizedCoordinateDim();
-    gvDim_ = anymal_->getDOF();
+    gcDim_ = a1_->getGeneralizedCoordinateDim();
+    gvDim_ = a1_->getDOF();
     nJoints_ = gvDim_ - 6;
 
     /// initialize containers
@@ -59,39 +74,52 @@ class ENVIRONMENT : public RaisimGymEnv {
     Eigen::VectorXd jointPgain(gvDim_), jointDgain(gvDim_);
     jointPgain.setZero(); jointPgain.tail(nJoints_).setConstant(50.0);
     jointDgain.setZero(); jointDgain.tail(nJoints_).setConstant(0.2);
-    anymal_->setPdGains(jointPgain, jointDgain);
-    anymal_->setGeneralizedForce(Eigen::VectorXd::Zero(gvDim_));
+    a1_->setPdGains(jointPgain, jointDgain);
+    a1_->setGeneralizedForce(Eigen::VectorXd::Zero(gvDim_));
 
     /// MUST BE DONE FOR ALL ENVIRONMENTS
-    obDim_ = 34;
-    actionDim_ = nJoints_; actionMean_.setZero(actionDim_); actionStd_.setZero(actionDim_);
+    obDim_ = 49;
+    actionDim_ = nJoints_;
+    actionMean_.setZero(actionDim_); actionStd_.setZero(actionDim_);
     obDouble_.setZero(obDim_);
 
     /// action scaling
     actionMean_ = gc_init_.tail(nJoints_);
     actionStd_.setConstant(0.3);
 
+    groundImpactForces_.setZero();
+    previousJointPositions_.setZero(nJoints_);
+
+    /// indices of links that should make contact with ground
+    contactIndices_.insert(a1_->getBodyIdx("FL_calf"));
+    contactIndices_.insert(a1_->getBodyIdx("FR_calf"));
+    contactIndices_.insert(a1_->getBodyIdx("RL_calf"));
+    contactIndices_.insert(a1_->getBodyIdx("RR_calf"));
+
+    // Define mapping of body ids to sequential indices
+    contactSequentialIndex_[a1_->getBodyIdx("FL_calf")] = 0;
+    contactSequentialIndex_[a1_->getBodyIdx("FR_calf")] = 1;
+    contactSequentialIndex_[a1_->getBodyIdx("RL_calf")] = 2;
+    contactSequentialIndex_[a1_->getBodyIdx("RR_calf")] = 3;
+
+    // Initialize materials
+    world_->setMaterialPairProp("default", "rubber", 0.8, 0.15, 0.001);
+
     /// Reward coefficients
     rewards_.initializeFromConfigurationFile (cfg["reward"]);
-
-    /// indices of links that should not make contact with ground
-    footIndices_.insert(anymal_->getBodyIdx("LF_SHANK"));
-    footIndices_.insert(anymal_->getBodyIdx("RF_SHANK"));
-    footIndices_.insert(anymal_->getBodyIdx("LH_SHANK"));
-    footIndices_.insert(anymal_->getBodyIdx("RH_SHANK"));
 
     /// visualize if it is the first environment
     if (visualizable_) {
       server_ = std::make_unique<raisim::RaisimServer>(world_.get());
       server_->launchServer();
-      server_->focusOn(anymal_);
+      server_->focusOn(a1_);
     }
   }
 
   void init() final { }
 
   void reset() final {
-    anymal_->setState(gc_init_, gv_init_);
+    a1_->setState(gc_init_, gv_init_);
     updateObservation();
   }
 
@@ -102,7 +130,7 @@ class ENVIRONMENT : public RaisimGymEnv {
     pTarget12_ += actionMean_;
     pTarget_.tail(nJoints_) = pTarget12_;
 
-    anymal_->setPdTarget(pTarget_, vTarget_);
+    a1_->setPdTarget(pTarget_, vTarget_);
 
     for(int i=0; i< int(control_dt_ / simulation_dt_ + 1e-10); i++){
       if(server_) server_->lockVisualizationServerMutex();
@@ -112,14 +140,17 @@ class ENVIRONMENT : public RaisimGymEnv {
 
     updateObservation();
 
-    rewards_.record("torque", anymal_->getGeneralizedForce().squaredNorm());
+    // Record values for next step calculations
+    previousJointPositions_ = gc_.tail(nJoints_);
+
+    rewards_.record("torque", a1_->getGeneralizedForce().squaredNorm());
     rewards_.record("forwardVel", std::min(4.0, bodyLinearVel_[0]));
 
     return rewards_.sum();
   }
 
   void updateObservation() {
-    anymal_->getState(gc_, gv_);
+    a1_->getState(gc_, gv_);
     raisim::Vec<4> quat;
     raisim::Mat<3,3> rot;
     quat[0] = gc_[3]; quat[1] = gc_[4]; quat[2] = gc_[5]; quat[3] = gc_[6];
@@ -127,11 +158,42 @@ class ENVIRONMENT : public RaisimGymEnv {
     bodyLinearVel_ = rot.e().transpose() * gv_.segment(0, 3);
     bodyAngularVel_ = rot.e().transpose() * gv_.segment(3, 3);
 
-    obDouble_ << gc_[2], /// body height
-        rot.e().row(2).transpose(), /// body orientation
-        gc_.tail(12), /// joint angles
-        bodyLinearVel_, bodyAngularVel_, /// body linear&angular velocity
-        gv_.tail(12); /// joint velocity
+    Eigen::VectorXd contacts;
+    contacts.setZero(footContactState_.size());
+    for (auto &fs: footContactState_)  fs = false;
+
+    /// Dirive contacts vector
+    for (auto &contact: a1_->getContacts()) {
+      if (!contact.isSelfCollision() && contact.getPairObjectBodyType() == BodyType::STATIC) {
+        if (contactIndices_.find(contact.getlocalBodyIndex()) != contactIndices_.end()) {
+          auto normalForce = contact.getContactFrame().e() * contact.getImpulse().e() / world_->getTimeStep();
+          auto groundImpactForce = sqrt(pow(normalForce[0],2) + pow(normalForce[1],2) + pow(normalForce[2],2));
+
+          auto bodyIndex = contact.getlocalBodyIndex();
+          groundImpactForces_[contactSequentialIndex_[bodyIndex]] = groundImpactForce;
+          footContactState_[contactSequentialIndex_[bodyIndex]] = true;
+          contacts[contactSequentialIndex_[bodyIndex]] = 1;
+        }
+      }
+    }
+
+    // Nosify observations
+    auto velocitiesNoised = gv_.tail(nJoints_) + 0.5 * Eigen::VectorXd::Random(nJoints_);
+
+    auto bodyLinearVelocityNoised = bodyLinearVel_ + 0.08 * Eigen::VectorXd::Random(bodyLinearVel_.size());
+    auto bodyAngularVelocityNoised = bodyAngularVel_ + 0.16 * Eigen::VectorXd::Random(bodyAngularVel_.size());
+
+    double euler_angles[3];
+    raisim::quatToEulerVec(&gc_[3], euler_angles);
+
+    obDouble_ << gc_[2],                // body height 1
+      euler_angles[0], euler_angles[1], // body roll & pitch 2
+      gc_.tail(nJoints_),               // joint angles 12
+      bodyLinearVelocityNoised,         // body linear 3
+      bodyAngularVelocityNoised,        // angular velocity 3
+      velocitiesNoised,                 // joint velocity 12
+      contacts,                         // contacts binary vector 4
+      previousJointPositions_;          // previous action 12
   }
 
   void observe(Eigen::Ref<EigenVec> ob) final {
@@ -155,15 +217,21 @@ class ENVIRONMENT : public RaisimGymEnv {
 
   void curriculumUpdate() { };
 
- private:
+private:
   int gcDim_, gvDim_, nJoints_;
   bool visualizable_ = false;
-  raisim::ArticulatedSystem* anymal_;
+  raisim::ArticulatedSystem* a1_;
   Eigen::VectorXd gc_init_, gv_init_, gc_, gv_, pTarget_, pTarget12_, vTarget_;
   double terminalRewardCoeff_ = -10.;
   Eigen::VectorXd actionMean_, actionStd_, obDouble_;
   Eigen::Vector3d bodyLinearVel_, bodyAngularVel_;
-  std::set<size_t> footIndices_;
+  Eigen::Vector4d groundImpactForces_;
+  Eigen::VectorXd previousJointPositions_;
+
+  // Contacts information
+  std::set<size_t> contactIndices_;
+  std::array<bool, 4> footContactState_;
+  std::unordered_map<int, int> contactSequentialIndex_;
 
   /// these variables are not in use. They are placed to show you how to create a random number sampler.
   std::normal_distribution<double> normDist_;
