@@ -31,7 +31,7 @@ class ENVIRONMENT : public RaisimGymEnv {
 public:
 
   explicit ENVIRONMENT(const std::string& resourceDir, const Yaml::Node& cfg, bool visualizable) :
-      RaisimGymEnv(resourceDir, cfg), visualizable_(visualizable), normDist_(0, 1) {
+      RaisimGymEnv(resourceDir, cfg), visualizable_(visualizable) {
 
     /// create world
     world_ = std::make_unique<raisim::World>();
@@ -122,6 +122,15 @@ public:
     // TODO: Move values to config
     // Initialize environmental sampler distributions
     decisionDist_ = std::uniform_real_distribution<double>(0, 1);
+    frictionDist_ = std::uniform_real_distribution<double>(0.5, 1.25);
+    // frictionDist_ = std::uniform_real_distribution<double>(0.7, 3.5);
+    kpDist_ = std::uniform_real_distribution<double>(50, 60);
+    kdDist_ = std::uniform_real_distribution<double>(0.4, 0.8);
+    comDist_ = std::uniform_real_distribution<double>(-0.0015, 0.0015);
+    motorStrengthDist_ = std::uniform_real_distribution<double>(0.9, 1.1);
+
+    initialActuationUpperLimits_ = a1_->getActuationUpperLimits().e().tail(nJoints_);
+    initialActuationLowerLimits_ = a1_->getActuationLowerLimits().e().tail(nJoints_);
 
     /// Reward coefficients
     rewards_.initializeFromConfigurationFile (cfg["reward"]);
@@ -137,11 +146,20 @@ public:
   void init() final { }
 
   void reset() final {
+    resampleEnvironmentalParameters();
     gc_init_[0] = x0Dist_(randomGenerator_);
     gc_init_[1] = y0Dist_(randomGenerator_);
 
     a1_->setState(gc_init_, gv_init_);
     updateObservation();
+  }
+
+  void curriculumUpdate() final {
+    k_c = std::min(pow(k_c, k_d), 1.0);
+
+    if (visualizable_) {
+      std::cout << "Curriculum factor: " << k_c << std::endl;
+    }
   }
 
   float step(const Eigen::Ref<EigenVec>& action) final {
@@ -250,8 +268,6 @@ public:
     return false;
   }
 
-  void curriculumUpdate() { };
-
 private:
   int gcDim_, gvDim_, nJoints_;
   bool visualizable_ = false;
@@ -272,17 +288,69 @@ private:
 
   // Random stuff for environmental parameters
   std::uniform_real_distribution<double> decisionDist_;
+  std::uniform_real_distribution<double> frictionDist_;
+  std::uniform_real_distribution<double> kpDist_;
+  std::uniform_real_distribution<double> kdDist_;
+  std::uniform_real_distribution<double> comDist_;
+  std::uniform_real_distribution<double> motorStrengthDist_;
+
+  Eigen::VectorXd initialActuationUpperLimits_;
+  Eigen::VectorXd initialActuationLowerLimits_;
 
   // Contacts information
   std::set<size_t> contactIndices_;
   std::array<bool, 4> footContactState_;
   std::unordered_map<int, int> contactSequentialIndex_;
 
-  /// these variables are not in use. They are placed to show you how to create a random number sampler.
-  std::normal_distribution<double> normDist_;
-  thread_local static std::mt19937 gen_;
+private:
+  void resampleEnvironmentalParameters() {
+    // std::cout << "Resampling enviroment parameters: " << std::endl;
+
+    // Center Of Mass
+    auto &baseCOM = a1_->getBodyCOM_B().at(0);
+    baseCOM[0] = k_c * comDist_(randomGenerator_);
+    baseCOM[1] = k_c * comDist_(randomGenerator_);
+    baseCOM[2] = k_c * comDist_(randomGenerator_);
+    a1_->updateMassInfo();
+
+    std::cout << "\nCOM: " << k_c << " " << baseCOM.e().transpose() << std::endl;
+
+    // Friction
+    auto frictionMean = (frictionDist_.a() + frictionDist_.b()) / 2.;
+    auto friction = frictionMean + k_c * (frictionDist_(randomGenerator_) - frictionMean);
+    world_->setDefaultMaterial(friction, 0, 0);
+    world_->setMaterialPairProp("default", "rubber", friction, 0.15, 0.001);
+
+    // if (visualizable_) std::cout << "\nFriction: " << friction << std::endl;
+
+    // P and D gains
+    auto KpMean = (kpDist_.a() + kpDist_.b()) / 2.;
+    auto Kp = KpMean + k_c * (kpDist_(randomGenerator_) - KpMean);
+    auto Kd = kdDist_.a() + k_c * (kdDist_(randomGenerator_) - kdDist_.a());
+
+    Eigen::VectorXd jointPgain(gvDim_), jointDgain(gvDim_);
+    jointPgain.setZero(); jointPgain.tail(nJoints_).setConstant(Kp);
+    jointDgain.setZero(); jointDgain.tail(nJoints_).setConstant(Kd);
+    a1_->setPdGains(jointPgain, jointDgain);
+
+    // std::cout << "\nPgain: " << jointPgain.transpose() << std::endl;
+    // std::cout << "\nDgain: " << jointDgain.transpose() << std::endl;
+
+    // Motors strength
+    Eigen::VectorXd actuationUpperLimits, actuationLowerLimits;
+    actuationUpperLimits.setZero(gvDim_);
+    actuationLowerLimits.setZero(gvDim_);
+
+    auto motorStrengthMean = (motorStrengthDist_.a() + motorStrengthDist_.b()) / 2.;
+    auto motorStrength = motorStrengthMean + k_c * (motorStrengthDist_(randomGenerator_) - motorStrengthMean);
+    actuationUpperLimits.tail(nJoints_) = motorStrength * initialActuationUpperLimits_;
+    actuationLowerLimits.tail(nJoints_) = motorStrength * initialActuationLowerLimits_;
+    a1_->setActuationLimits(actuationUpperLimits, actuationLowerLimits);
+
+    // std::cout << "\nActuationUpperLimits: " << actuationUpperLimits.transpose() << std::endl;
+    // std::cout << "\nActuationLowerLimits: " << actuationLowerLimits.transpose() << std::endl;
+  }
 };
-thread_local std::mt19937 raisim::ENVIRONMENT::gen_;
 
 }
 
