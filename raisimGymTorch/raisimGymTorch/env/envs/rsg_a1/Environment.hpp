@@ -45,8 +45,8 @@ public:
 
 
     /// add objects
-    a1_ = world_->addArticulatedSystem(resourceDir_+"/a1/urdf/a1.urdf");
-    a1_->setName("anymal");
+    a1_ = world_->addArticulatedSystem(resourceDir_ + "/a1/urdf/a1.urdf");
+    a1_->setName("Unitree A1");
     a1_->setControlMode(raisim::ControlMode::PD_PLUS_FEEDFORWARD_TORQUE);
 
     // Terrain
@@ -86,13 +86,13 @@ public:
 
     /// set pd gains
     Eigen::VectorXd jointPgain(gvDim_), jointDgain(gvDim_);
-    jointPgain.setZero(); jointPgain.tail(nJoints_).setConstant(50.0);
-    jointDgain.setZero(); jointDgain.tail(nJoints_).setConstant(0.2);
+    jointPgain.setZero(); jointPgain.tail(nJoints_).setConstant(55.0);
+    jointDgain.setZero(); jointDgain.tail(nJoints_).setConstant(0.8);
     a1_->setPdGains(jointPgain, jointDgain);
     a1_->setGeneralizedForce(Eigen::VectorXd::Zero(gvDim_));
 
     /// MUST BE DONE FOR ALL ENVIRONMENTS
-    obDim_ = 49;
+    obDim_ = 49; /// convention described on top
     actionDim_ = nJoints_;
     actionMean_.setZero(actionDim_); actionStd_.setZero(actionDim_);
     obDouble_.setZero(obDim_);
@@ -118,6 +118,10 @@ public:
 
     // Initialize materials
     world_->setMaterialPairProp("default", "rubber", 0.8, 0.15, 0.001);
+
+    // TODO: Move values to config
+    // Initialize environmental sampler distributions
+    decisionDist_ = std::uniform_real_distribution<double>(0, 1);
 
     /// Reward coefficients
     rewards_.initializeFromConfigurationFile (cfg["reward"]);
@@ -162,6 +166,20 @@ public:
 
     rewards_.record("torque", a1_->getGeneralizedForce().squaredNorm());
     rewards_.record("forwardVel", std::min(4.0, bodyLinearVel_[0]));
+
+    // Apply random force to the COM
+    auto applyingForceDecision = decisionDist_(randomGenerator_);
+    if (applyingForceDecision < 0.5) {
+    	auto externalEffort = 1000 * Eigen::VectorXd::Random(3);
+    	a1_->setExternalForce(a1_->getBodyIdx("base"), externalEffort);
+    }
+
+    // Apply random torque to the COM
+    applyingForceDecision = decisionDist_(randomGenerator_);
+    if (applyingForceDecision < 0.05) {
+    	auto externalTorque = 100 * Eigen::VectorXd::Random(3);
+    	a1_->setExternalTorque(a1_->getBodyIdx("base"), externalTorque);
+    }
 
     return rewards_.sum();
   }
@@ -251,6 +269,9 @@ private:
   std::random_device randomGenerator_;
   std::uniform_real_distribution<double> x0Dist_;
   std::uniform_real_distribution<double> y0Dist_;
+
+  // Random stuff for environmental parameters
+  std::uniform_real_distribution<double> decisionDist_;
 
   // Contacts information
   std::set<size_t> contactIndices_;
