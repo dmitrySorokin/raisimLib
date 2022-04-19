@@ -14,10 +14,43 @@ environment:
   k_0: 1.0
   k_d: 0.997
   reward:
-    forwardVel:
-      coeff: 0.3
-    torque:
-      coeff: -4e-5
+    #forwardVel:
+    #  coeff: 0.3
+    #torque:
+    #  coeff: -4e-5
+    BaseForwardVelocity:
+      coeff: 2.0
+    BaseLateralAndRotation:
+      coeff: 0.5
+    LinCommandVelocity:
+      coeff: 4.0
+    AngCommandVelocity:
+      coeff: 0.05
+    XYRotation:
+      coeff: 0.05
+    Work:
+      coeff: 0.05
+    GroundImpact:
+      coeff: 0.0001
+    Smoothness:
+      coeff: 0.0003
+    ActionMagnitude:
+      coeff: 0.005
+    JointSpeed:
+      coeff: 0.003
+    Orientation:
+      coeff: 2.4
+    ZAcceleration:
+      coeff: 2.0
+    Slip:
+      coeff: 0.4
+    AirTime:
+      coeff: 1.0
+      desired_foot_height: 0.07
+    Torque:
+      coeff: 0.005
+    BaseHeight:
+      coeff: 4.0
   terrain:
     frequency: 1.0
     zScale: 0.2
