@@ -10,6 +10,9 @@ environment:
   simulation_dt: 0.0025
   control_dt: 0.01
   max_time: 4.0
+  # Curriculum factors
+  k_0: 0.03
+  k_d: 0.997
   reward:
     forwardVel:
       coeff: 0.3

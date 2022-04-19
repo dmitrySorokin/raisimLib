@@ -36,6 +36,14 @@ public:
     /// create world
     world_ = std::make_unique<raisim::World>();
 
+    // Load configuration
+    setSimulationTimeStep(cfg["simulation_dt"].template As<double>());
+    setControlTimeStep(cfg["control_dt"].template As<double>());
+    k_c = cfg["k_0"].template As<double>();
+    k_d = cfg["k_d"].template As<double>();
+    // ...
+
+
     /// add objects
     a1_ = world_->addArticulatedSystem(resourceDir_+"/a1/urdf/a1.urdf");
     a1_->setName("anymal");
@@ -67,8 +75,14 @@ public:
     gv_.setZero(gvDim_); gv_init_.setZero(gvDim_);
     pTarget_.setZero(gcDim_); vTarget_.setZero(gvDim_); pTarget12_.setZero(nJoints_);
 
-    /// this is nominal configuration of anymal
-    gc_init_ << 0.0, 0.0, 0.39, 1.0, 0.0, 0.0, 0.0, 0.06, 0.6, -1.2, -0.06, 0.6, -1.2, 0.06, 0.6, -1.2, -0.06, 0.6, -1.2;
+    // Generate robot initial pose
+    x0Dist_ = std::uniform_real_distribution<double>(-1, 1);
+    y0Dist_ = std::uniform_real_distribution<double>(-1, 1);
+
+    /// this is nominal standing configuration of unitree A1
+    // P_x, P_y, P_z, 1.0, A_x, A_y, A_z, FR_hip, FR_thigh, FR_calf, FL_hip, FL_thigh, FL_calf, RR_hip, RR_thigh, RR_calf, RL_hip, RL_thigh, RL_calf.
+    // gc_init_ << 0.0, 0.0, 0.39, 1.0, 0.0, 0.0, 0.0, 0.06, 0.6, -1.2, -0.06, 0.6, -1.2, 0.06, 0.6, -1.2, -0.06, 0.6, -1.2;
+    gc_init_ << x0Dist_(randomGenerator_), y0Dist_(randomGenerator_), 0.45, 1.0, 0.0, 0.0, 0.0, 0.06, 0.6, -1.2, -0.06, 0.6, -1.2, 0.06, 0.6, -1.2, -0.06, 0.6, -1.2;
 
     /// set pd gains
     Eigen::VectorXd jointPgain(gvDim_), jointDgain(gvDim_);
@@ -119,6 +133,9 @@ public:
   void init() final { }
 
   void reset() final {
+    gc_init_[0] = x0Dist_(randomGenerator_);
+    gc_init_[1] = y0Dist_(randomGenerator_);
+
     a1_->setState(gc_init_, gv_init_);
     updateObservation();
   }
@@ -227,6 +244,13 @@ private:
   Eigen::Vector3d bodyLinearVel_, bodyAngularVel_;
   Eigen::Vector4d groundImpactForces_;
   Eigen::VectorXd previousJointPositions_;
+
+  // Curriculum factors
+  double k_c, k_d;
+
+  std::random_device randomGenerator_;
+  std::uniform_real_distribution<double> x0Dist_;
+  std::uniform_real_distribution<double> y0Dist_;
 
   // Contacts information
   std::set<size_t> contactIndices_;
