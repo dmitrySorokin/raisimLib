@@ -20,6 +20,8 @@ environment:
       coeff: 0.05
     basemot:
       coeff: 0.05
+    smooth:
+      coeff: -0.025
   terrain:
     frequency: 1.0
     zScale: 0.2

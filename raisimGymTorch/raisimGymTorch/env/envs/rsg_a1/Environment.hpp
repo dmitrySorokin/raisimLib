@@ -104,6 +104,7 @@ public:
     groundImpactForces_.setZero();
     previousGroundImpactForces_.setZero();
     previousJointPositions_.setZero(nJoints_);
+    previous2JointPositions_.setZero(nJoints_);
     previousTorque_ = a1_->getGeneralizedForce().e().tail(nJoints_);
 
     /// indices of links that should make contact with ground
@@ -187,9 +188,11 @@ public:
     rewards_.record("torque", a1_->getGeneralizedForce().squaredNorm());
     rewards_.record("basemot", calculateBaseMotionReward());
     rewards_.record("linvel", calculateLinearVelocityReward());
+    rewards_.record("smooth", calculateSmoothnessReward());
 
     // Record values for next step calculations
     previousTorque_ = a1_->getGeneralizedForce().e().tail(nJoints_);
+    previous2JointPositions_ = previousJointPositions_;
     previousJointPositions_ = gc_.tail(nJoints_);
     previousGroundImpactForces_ = groundImpactForces_;
 
@@ -286,6 +289,7 @@ private:
   Eigen::Vector3d bodyLinearVel_, bodyAngularVel_;
   Eigen::Vector4d groundImpactForces_;
   Eigen::VectorXd previousJointPositions_;
+  Eigen::VectorXd previous2JointPositions_;
   Eigen::VectorXd previousTorque_;
   Eigen::Vector4d previousGroundImpactForces_;
 
@@ -365,7 +369,7 @@ private:
 
   inline double calculateLinearVelocityReward() {
     auto vpr = bodyLinearVel_[0] * command_[0] + bodyLinearVel_[1] * command_[1];
-    auto error = vpr - 0.6;
+    auto error = vpr - 0.34;
     return error > 0 ? 1.0 : exp(-2.0 * error * error);
   }
 
@@ -378,6 +382,11 @@ private:
     return exp(-1.5 * v02) + exp(-1.5 * wxy2);
   }
 
+  inline double calculateSmoothnessReward() {
+    auto jointPositions = gc_.tail(nJoints_);
+    auto deriv = jointPositions - 2 * previousJointPositions_ + previous2JointPositions_;
+    return std::sqrt(deriv.squaredNorm());
+  }
 };
 
 }
