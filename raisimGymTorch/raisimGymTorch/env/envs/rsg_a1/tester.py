@@ -23,6 +23,7 @@ cfg = YAML().load(open(task_path + "/cfg.yaml", 'r'))
 
 # create environment from the configuration file
 cfg['environment']['num_envs'] = 1
+cfg['environment']['k_0'] = 0
 
 env = VecEnv(rsg_a1.RaisimGymEnv(home_path + "/rsc", dump(cfg['environment'], Dumper=RoundTripDumper)), cfg['environment'])
 
@@ -55,12 +56,13 @@ else:
     env.turn_on_visualization()
 
     # max_steps = 1000000
-    max_steps = 1000 ## 10 secs
+    max_steps = 10000 ## 10 secs
 
     for step in range(max_steps):
         time.sleep(0.01)
         obs = env.observe(False)
         action_ll = loaded_graph.architecture(torch.from_numpy(obs).cpu())
+        # action_ll = torch.randn([1, act_dim]) / 4
         reward_ll, dones = env.step(action_ll.cpu().detach().numpy())
         reward_ll_sum = reward_ll_sum + reward_ll[0]
         if dones or step == max_steps - 1:
