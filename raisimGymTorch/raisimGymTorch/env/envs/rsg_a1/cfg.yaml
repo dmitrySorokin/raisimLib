@@ -17,14 +17,12 @@ environment:
     torque:
       coeff: -2e-5
     linvel:
-      coeff: 0.3
-    smooth:
-      coeff: -0.025
+      coeff: 0.05
   terrain:
     frequency: 1.0
-    zScale: 0.5
-    xSize: 20.0
-    ySize: 20.0
+    zScale: 0.2
+    xSize: 40.0
+    ySize: 40.0
     xSamples: 200
     ySamples: 200
     fractalOctaves: 8

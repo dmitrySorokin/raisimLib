@@ -7,6 +7,7 @@
 
 #include <stdlib.h>
 #include <set>
+#include <algorithm>
 #include "../../RaisimGymEnv.hpp"
 
 /* Convention
@@ -187,7 +188,6 @@ public:
     // reward
     rewards_.record("torque", a1_->getGeneralizedForce().squaredNorm());
     rewards_.record("linvel", calculateLinearVelocityReward());
-    rewards_.record("smooth", calculateSmoothnessReward());
 
     // Record values for next step calculations
     previousTorque_ = a1_->getGeneralizedForce().e().tail(nJoints_);
@@ -368,13 +368,8 @@ private:
 
   inline double calculateLinearVelocityReward() {
     auto vpr = bodyLinearVel_[0] * command_[0] + bodyLinearVel_[1] * command_[1];
-    return std::min(vpr, 0.6);
-  }
-
-  inline double calculateSmoothnessReward() {
-    auto jointPositions = gc_.tail(nJoints_);
-    auto deriv = jointPositions - 2 * previousJointPositions_ + previous2JointPositions_;
-    return std::sqrt(deriv.squaredNorm());
+    auto error = vpr - 0.35;
+    return error > 0 ? 1.0 : std::exp(-2.0 * error * error);
   }
 };
 
