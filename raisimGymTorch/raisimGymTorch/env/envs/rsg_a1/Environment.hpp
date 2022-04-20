@@ -186,7 +186,6 @@ public:
 
     // reward
     rewards_.record("torque", a1_->getGeneralizedForce().squaredNorm());
-    rewards_.record("basemot", calculateBaseMotionReward());
     rewards_.record("linvel", calculateLinearVelocityReward());
     rewards_.record("smooth", calculateSmoothnessReward());
 
@@ -369,17 +368,7 @@ private:
 
   inline double calculateLinearVelocityReward() {
     auto vpr = bodyLinearVel_[0] * command_[0] + bodyLinearVel_[1] * command_[1];
-    auto error = vpr - 0.34;
-    return error > 0 ? 1.0 : exp(-2.0 * error * error);
-  }
-
-  inline double calculateBaseMotionReward() {
-    auto wxy2 = bodyAngularVel_[0] * bodyAngularVel_[0] + bodyAngularVel_[1] * bodyAngularVel_[1];
-    auto vpr = bodyLinearVel_[0] * command_[0] + bodyLinearVel_[1] * command_[1];
-    auto v0x = bodyLinearVel_[0] - vpr * command_[0];
-    auto v0y = bodyLinearVel_[1] - vpr * command_[1];
-    auto v02 = v0x * v0x + v0y * v0y;
-    return exp(-1.5 * v02) + exp(-1.5 * wxy2);
+    return std::min(vpr, 0.6);
   }
 
   inline double calculateSmoothnessReward() {

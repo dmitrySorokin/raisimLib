@@ -17,9 +17,7 @@ environment:
     torque:
       coeff: -2e-5
     linvel:
-      coeff: 0.05
-    basemot:
-      coeff: 0.05
+      coeff: 0.3
     smooth:
       coeff: -0.025
   terrain:
