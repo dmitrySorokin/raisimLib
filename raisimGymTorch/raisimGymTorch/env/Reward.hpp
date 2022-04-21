@@ -45,23 +45,25 @@ class Reward {
     RSFATAL_IF(rewards_.find(name) == rewards_.end(), name<<" was not found in the configuration file")
     RSISNAN_MSG(reward, name<<" is nan")
 
-    if(!accumulate)
+    if(!accumulate) {
       rewards_[name].reward = 0.f;
+    }
     rewards_[name].reward += reward * rewards_[name].coefficient;
     rewards_[name].integral += rewards_[name].reward;
   }
 
   float sum() {
     float sum = 0.f;
-    for(auto& rw: rewards_)
+    for(auto& rw: rewards_) {
       sum += rw.second.reward;
-
+    }
     return sum;
   }
 
   void setZero() {
-    for(auto& rw: rewards_)
+    for(auto& rw: rewards_) {
       rw.second.reward = 0.f;
+    }
   }
 
   void reset() {
@@ -72,15 +74,17 @@ class Reward {
   }
 
   const std::map<std::string, float>& getStdMapOfRewardIntegral() {
-    for(auto& rw: rewards_)
+    for(auto& rw: rewards_) {
       costSum_[rw.first] = rw.second.integral;
+    }
 
     return costSum_;
   }
 
   const std::map<std::string, float>& getStdMap() {
-    for(auto& rw: rewards_)
+    for(auto& rw: rewards_) {
       rewardMap_[rw.first] = rw.second.reward;
+    }
     rewardMap_["reward_sum"] = sum();
 
     return rewardMap_;
