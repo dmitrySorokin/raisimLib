@@ -1,31 +1,38 @@
+#!/usr/bin/env python3
 from ruamel.yaml import YAML, dump, RoundTripDumper
 from raisimGymTorch.env.bin import rsg_a1
 from raisimGymTorch.env.RaisimGymVecEnv import RaisimGymVecEnv as VecEnv
 import raisimGymTorch.algo.ppo.module as ppo_module
 import os
-import math
 import time
 import torch
 import argparse
 
-
 # configuration
 parser = argparse.ArgumentParser()
 parser.add_argument('-w', '--weight', help='trained weight path', type=str, default='')
+parser.add_argument('--viz', action='store_true')
 args = parser.parse_args()
+
+# check if gpu is available
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # directories
 task_path = os.path.dirname(os.path.realpath(__file__))
+log_path = "/".join(args.weight.split("/")[:-1])
 home_path = task_path + "/../../../../.."
 
 # config
-cfg = YAML().load(open(task_path + "/cfg.yaml", 'r'))
+cfg = YAML().load(open(log_path + "/cfg.yaml", 'r'))
 
 # create environment from the configuration file
 cfg['environment']['num_envs'] = 1
-cfg['environment']['k_0'] = 0
+cfg['environment']['k_0'] = 1.0
 
-env = VecEnv(rsg_a1.RaisimGymEnv(home_path + "/rsc", dump(cfg['environment'], Dumper=RoundTripDumper)), cfg['environment'])
+env = VecEnv(
+    rsg_a1.RaisimGymEnv(home_path + "/rsc", dump(cfg['environment'], Dumper=RoundTripDumper)),
+    normalize_ob=True
+)
 
 # shortcuts
 ob_dim = env.num_obs
@@ -39,40 +46,34 @@ if weight_path == "":
     print("Can't find trained weight, please provide a trained weight with --weight switch\n")
 else:
     print("Loaded weight from {}\n".format(weight_path))
-    start = time.time()
-    env.reset()
-    reward_ll_sum = 0
-    done_sum = 0
-    average_dones = 0.
-    n_steps = math.floor(cfg['environment']['max_time'] / cfg['environment']['control_dt'])
-    total_steps = n_steps * 1
-    start_step_id = 0
 
     print("Visualizing and evaluating the policy: ", weight_path)
     loaded_graph = ppo_module.MLP(cfg['architecture']['policy_net'], torch.nn.LeakyReLU, ob_dim, act_dim)
-    loaded_graph.load_state_dict(torch.load(weight_path, map_location='cpu')['actor_architecture_state_dict'])
+    loaded_graph.load_state_dict(torch.load(weight_path, map_location=device)['actor_architecture_state_dict'])
 
     env.load_scaling(weight_dir, int(iteration_number))
-    env.turn_on_visualization()
+    if args.viz:
+        env.turn_on_visualization()
 
-    # max_steps = 1000000
-    max_steps = 10000 ## 10 secs
+    for episode in range(100):
+        done = False
+        env.reset()
+        reward_ll_sum = 0
+        steps = 0
+        while not done:
+            steps += 1
+            if args.viz:
+                time.sleep(0.01)
+            obs = env.observe(False)
+            action_ll = loaded_graph.architecture(torch.from_numpy(obs).cpu())
+            reward_ll, dones = env.step(action_ll.cpu().detach().numpy())
+            reward_ll_sum += reward_ll[0]
+            done = dones[0]
+        print('----------------------------------------------------')
+        print(steps)
+        print('{:<40} {:>6}'.format("average ll reward: ", '{:0.10f}'.format(reward_ll_sum / steps)))
+        print('{:<40} {:>6}'.format("time elapsed [sec]: ", '{:6.4f}'.format(steps * 0.01)))
+        print('----------------------------------------------------\n')
 
-    for step in range(max_steps):
-        time.sleep(0.01)
-        obs = env.observe(False)
-        action_ll = loaded_graph.architecture(torch.from_numpy(obs).cpu())
-        # action_ll = torch.randn([1, act_dim]) / 4
-        reward_ll, dones = env.step(action_ll.cpu().detach().numpy())
-        reward_ll_sum = reward_ll_sum + reward_ll[0]
-        if dones or step == max_steps - 1:
-            print('----------------------------------------------------')
-            print('{:<40} {:>6}'.format("average ll reward: ", '{:0.10f}'.format(reward_ll_sum / (step + 1 - start_step_id))))
-            print('{:<40} {:>6}'.format("time elapsed [sec]: ", '{:6.4f}'.format((step + 1 - start_step_id) * 0.01)))
-            print('----------------------------------------------------\n')
-            start_step_id = step + 1
-            reward_ll_sum = 0.0
-
-    env.turn_off_visualization()
-    env.reset()
-    print("Finished at the maximum visualization steps")
+    if args.viz:
+        env.turn_off_visualization()
