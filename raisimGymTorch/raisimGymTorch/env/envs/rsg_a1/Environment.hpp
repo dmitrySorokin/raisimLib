@@ -434,9 +434,9 @@ private:
     Eigen::Vector3d desiredLinearVel = {1.0, 0.0, 0.0};
 
     return c_v1 * logisticKernel(c_v2 * (
-        bodyLinearVel_[0] - desiredLinearVel[0] +
-        bodyLinearVel_[1] - desiredLinearVel[1] +
-        bodyLinearVel_[2] - desiredLinearVel[2]
+        std::fabs(bodyLinearVel_[0] - desiredLinearVel[0]) +
+        std::fabs(bodyLinearVel_[1] - desiredLinearVel[1]) +
+        std::fabs(bodyLinearVel_[2] - desiredLinearVel[2])
     ));
   }
 
