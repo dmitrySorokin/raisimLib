@@ -407,17 +407,12 @@ private:
   // Cost terms calculations
   //
 
-
-  inline double logisticKernel(double value) {
-    return -1.0 / (std::exp(value) + 2.0 + std::exp(-value));
-  }
-
   inline double calculateBaseAngularVelocityCost() {
     auto dt = control_dt_;
-    auto c_w = -6 * dt;
+    auto c_w = 6 * dt;
 
     // TODO: Check if using bodyAngularVel_[2] is correct for angular velocity
-    return c_w * logisticKernel(bodyAngularVel_[2] - 0);
+    return c_w * std::fabs(bodyAngularVel_[2] - 0);
   }
 
   inline double calculateTorqueCost() {
@@ -428,16 +423,15 @@ private:
 
   inline double calculateBaseLinearVelocityCost() {
     auto dt = control_dt_;
-    auto c_v1 = -10 * dt;
-    auto c_v2 = -4 * dt;
+    auto c_v1 = 10 * dt;
 
     Eigen::Vector3d desiredLinearVel = {1.0, 0.0, 0.0};
 
-    return c_v1 * logisticKernel(c_v2 * (
+    return c_v1 * (
         std::fabs(bodyLinearVel_[0] - desiredLinearVel[0]) +
         std::fabs(bodyLinearVel_[1] - desiredLinearVel[1]) +
         std::fabs(bodyLinearVel_[2] - desiredLinearVel[2])
-    ));
+    );
   }
 
   inline double calculateJointSpeedCost() {
