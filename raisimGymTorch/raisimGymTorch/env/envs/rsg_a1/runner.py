@@ -4,14 +4,12 @@ from raisimGymTorch.env.bin.rsg_a1 import NormalSampler
 from raisimGymTorch.env.RaisimGymVecEnv import RaisimGymVecEnv as VecEnv
 from raisimGymTorch.helper.raisim_gym_helper import ConfigurationSaver, load_param, tensorboard_launcher
 import os
-import math
 import time
 import raisimGymTorch.algo.ppo.module as ppo_module
 import raisimGymTorch.algo.ppo.ppo as PPO
 import torch.nn as nn
 import numpy as np
 import torch
-import datetime
 import argparse
 
 
@@ -50,19 +48,22 @@ total_steps = n_steps * env.num_envs
 
 avg_rewards = []
 
-actor = ppo_module.Actor(ppo_module.MLP(cfg['architecture']['policy_net'], nn.LeakyReLU, ob_dim, act_dim),
-                         ppo_module.MultivariateGaussianDiagonalCovariance(act_dim,
-                                                                           env.num_envs,
-                                                                           1.0,
-                                                                           NormalSampler(act_dim),
-                                                                           cfg['seed']),
-                         device)
-critic = ppo_module.Critic(ppo_module.MLP(cfg['architecture']['value_net'], nn.LeakyReLU, ob_dim, 1),
-                           device)
+actor = ppo_module.Actor(
+    ppo_module.MLP(cfg['architecture']['policy_net'], nn.LeakyReLU, ob_dim, act_dim),
+    ppo_module.MultivariateGaussianDiagonalCovariance(
+        act_dim, env.num_envs, 1.0, NormalSampler(act_dim), cfg['seed']),
+    device
+)
+
+critic = ppo_module.Critic(
+    ppo_module.MLP(cfg['architecture']['value_net'], nn.LeakyReLU, ob_dim, 1),
+    device
+)
 
 saver = ConfigurationSaver(log_dir=home_path + "/raisimGymTorch/data/"+task_name,
                            save_items=[task_path + "/cfg.yaml", task_path + "/Environment.hpp"])
-tensorboard_launcher(saver.data_dir+"/..")  # press refresh (F5) after the first ppo update
+
+# tensorboard_launcher(saver.data_dir+"/..")  # press refresh (F5) after the first ppo update
 
 ppo = PPO.PPO(actor=actor,
               critic=critic,
@@ -74,8 +75,8 @@ ppo = PPO.PPO(actor=actor,
               num_mini_batches=4,
               device=device,
               log_dir=saver.data_dir,
-              shuffle_batch=False,
-              )
+              shuffle_batch=True,
+)
 
 if mode == 'retrain':
     load_param(weight_path, env, actor, critic, ppo.optimizer, saver.data_dir)
@@ -96,27 +97,6 @@ for update in range(1000000):
             'optimizer_state_dict': ppo.optimizer.state_dict(),
         }, saver.data_dir+"/full_"+str(update)+'.pt')
         # we create another graph just to demonstrate the save/load method
-        loaded_graph = ppo_module.MLP(cfg['architecture']['policy_net'], nn.LeakyReLU, ob_dim, act_dim)
-        loaded_graph.load_state_dict(torch.load(saver.data_dir+"/full_"+str(update)+'.pt')['actor_architecture_state_dict'])
-
-        env.turn_on_visualization()
-        env.start_video_recording(datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S") + "policy_"+str(update)+'.mp4')
-
-        for step in range(n_steps*2):
-            with torch.no_grad():
-                frame_start = time.time()
-                obs = env.observe(False)
-                action_ll = loaded_graph.architecture(torch.from_numpy(obs).cpu())
-                reward_ll, dones = env.step(action_ll.cpu().detach().numpy())
-                frame_end = time.time()
-                wait_time = cfg['environment']['control_dt'] - (frame_end-frame_start)
-                if wait_time > 0.:
-                    time.sleep(wait_time)
-
-        env.stop_video_recording()
-        env.turn_off_visualization()
-
-        env.reset()
         env.save_scaling(saver.data_dir, str(update))
 
     # actual training
@@ -136,7 +116,7 @@ for update in range(1000000):
     avg_rewards.append(average_ll_performance)
 
     actor.update()
-    actor.distribution.enforce_minimum_std((torch.ones(12)*0.2).to(device))
+    # actor.distribution.enforce_minimum_std((torch.ones(12)*0.2).to(device))
 
     # curriculum update. Implement it in Environment.hpp
     env.curriculum_callback()
