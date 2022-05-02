@@ -210,14 +210,14 @@ public:
 
     updateObservation();
 
-    rewards_.record("angularVelocity", calculateBaseAngularVelocityCost());
     rewards_.record("linearVelocity", calculateBaseLinearVelocityCost());
-    rewards_.record("torque", calculateTorqueCost());
-    rewards_.record("jointSpeed", calculateJointSpeedCost());
-    rewards_.record("footClearance", calculateFootClearanceCost());
-    rewards_.record("footSlip", calculateSlipCost());
-    rewards_.record("orientation", calculateOrientationCost());
-    rewards_.record("smoothness", calculateSmoothnessCost());
+    rewards_.record("angularVelocity", calculateBaseAngularVelocityCost());
+    //rewards_.record("torque", calculateTorqueCost());
+    //rewards_.record("jointSpeed", calculateJointSpeedCost());
+    //rewards_.record("footClearance", calculateFootClearanceCost());
+    //rewards_.record("footSlip", calculateSlipCost());
+    //rewards_.record("orientation", calculateOrientationCost());
+    //rewards_.record("smoothness", calculateSmoothnessCost());
 
     // Record values for next step calculations
     previousTorque_ = a1_->getGeneralizedForce().e().tail(nJoints_);
@@ -407,31 +407,22 @@ private:
   // Cost terms calculations
   //
 
-  inline double calculateBaseAngularVelocityCost() {
-    auto dt = control_dt_;
-    auto c_w = 6 * dt;
+  inline double calculateBaseLinearVelocityCost() {
+    Eigen::Vector3d desiredLinearVel = {1.0, 0.0, 0.0};
+    double vpr = desiredLinearVel.dot(bodyLinearVel_);
+    return vpr > 0.6 ? 1.0 : std::exp(-2.0 * (vpr - 0.6) * (vpr - 0.6));
+  }
 
-    // TODO: Check if using bodyAngularVel_[2] is correct for angular velocity
-    return c_w * std::fabs(bodyAngularVel_[2] - 0);
+  inline double calculateBaseAngularVelocityCost() {
+    double v02 = bodyLinearVel_[1] * bodyLinearVel_[1];
+    double wxy2 = bodyAngularVel_[0] * bodyAngularVel_[0] + bodyAngularVel_[1] * bodyAngularVel_[1];
+    return std::exp(-1.5 * v02) + std::exp(-1.5 * wxy2);
   }
 
   inline double calculateTorqueCost() {
     auto dt = control_dt_;
     auto c_t = 0.005 * dt;
     return k_c * c_t * a1_->getGeneralizedForce().e().tail(nJoints_).squaredNorm();
-  }
-
-  inline double calculateBaseLinearVelocityCost() {
-    auto dt = control_dt_;
-    auto c_v1 = 10 * dt;
-
-    Eigen::Vector3d desiredLinearVel = {1.0, 0.0, 0.0};
-
-    return c_v1 * (
-        std::fabs(bodyLinearVel_[0] - desiredLinearVel[0]) +
-        std::fabs(bodyLinearVel_[1] - desiredLinearVel[1]) +
-        std::fabs(bodyLinearVel_[2] - desiredLinearVel[2])
-    );
   }
 
   inline double calculateJointSpeedCost() {

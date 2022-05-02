@@ -14,22 +14,10 @@ environment:
   k_0: 0.03
   k_d: 0.997
   reward:
-    angularVelocity:
-      coeff: 1.0
     linearVelocity:
-      coeff: 1.0
-    torque:
-      coeff: 1.0
-    jointSpeed:
-      coeff: 1.0
-    footClearance:
-      coeff: 1.0
-    footSlip:
-      coeff: 1.0
-    orientation:
-      coeff: 1.0
-    smoothness:
-      coeff: 1.0
+      coeff: 0.05
+    angularVelocity:
+      coeff: 0.04
   terrain:
     frequency: 1.0
     zScale: 0.2
