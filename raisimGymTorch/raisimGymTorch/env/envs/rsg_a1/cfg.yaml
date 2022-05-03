@@ -21,7 +21,7 @@ environment:
     torque:
       coeff: 0.00002
     footClearance:
-      coeff: 0.05
+      coeff: 0.01
   terrain:
     frequency: 1.0
     zScale: 0.2

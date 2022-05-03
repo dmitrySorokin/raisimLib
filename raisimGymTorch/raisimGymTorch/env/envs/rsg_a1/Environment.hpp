@@ -437,11 +437,11 @@ private:
       vel[2] = 0.0;
 
       if (!footContactState_[contactSequentialIndex_[footBodyIndex]]) {
-        footAirTimeCost += (p_f_hat - pos[2]) * (p_f_hat - pos[2]) * vel.squaredNorm();
+        footAirTimeCost += pos[2] > p_f_hat;
       }
     }
 
-    return -footAirTimeCost;
+    return footAirTimeCost;
   }
 
   inline double calculateJointSpeedCost() {
