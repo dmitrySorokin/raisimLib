@@ -181,6 +181,7 @@ public:
     a1_->setState(gc_init_, gv_init_);
 
     previousJointPositions_ = gc_.tail(nJoints_);
+    previous2JointPositions_ = gc_.tail(nJoints_);
     updateObservation();
     steps_ = 0;
   }
@@ -208,6 +209,12 @@ public:
       if(server_) server_->unlockVisualizationServerMutex();
     }
 
+    // Record values for next step calculations
+    previousTorque_ = a1_->getGeneralizedForce().e().tail(nJoints_);
+    previous2JointPositions_ = previousJointPositions_;
+    previousJointPositions_ = gc_.tail(nJoints_);
+    previousGroundImpactForces_ = groundImpactForces_;
+
     updateObservation();
 
     rewards_.record("linearVelocity", calculateBaseLinearVelocityCost());
@@ -217,12 +224,7 @@ public:
     rewards_.record("footClearance", calculateFootClearanceCost());
     //rewards_.record("footSlip", calculateSlipCost());
     //rewards_.record("orientation", calculateOrientationCost());
-    //rewards_.record("smoothness", calculateSmoothnessCost());
-
-    // Record values for next step calculations
-    previousTorque_ = a1_->getGeneralizedForce().e().tail(nJoints_);
-    previousJointPositions_ = gc_.tail(nJoints_);
-    previousGroundImpactForces_ = groundImpactForces_;
+    rewards_.record("smoothness", calculateSmoothnessCost());
 
     // Apply random force to the COM
     auto applyingForceDecision = decisionDist_(randomGenerator_);
@@ -444,40 +446,9 @@ private:
     return footAirTimeCost;
   }
 
-  inline double calculateJointSpeedCost() {
-    auto joint_velocities = gv_.tail(nJoints_);
-    auto cjs = 0.03 * control_dt_;
-    return k_c * cjs * joint_velocities.squaredNorm();
-  }
-
-  inline double calculateSlipCost() {
-    double footSlipCost = 0.0;
-    auto c_fv = 2.0 * control_dt_;
-    for (auto footBodyIndex : contactIndices_) {
-      raisim::Vec<3> vel;
-      a1_->getVelocity(footBodyIndex, vel);
-
-      // We only use xy velocity components
-      vel[2] = 0.0;
-
-      if (footContactState_[contactSequentialIndex_[footBodyIndex]] == true) {
-        footSlipCost += vel.squaredNorm();
-      }
-    }
-
-    return k_c * c_fv * footSlipCost;
-  }
-
-  inline double calculateOrientationCost() {
-    auto angles_roll_pitch = gc_.segment(4, 2);
-    auto c_o = 0.4 * control_dt_;
-    return k_c * c_o * angles_roll_pitch.squaredNorm();
-  }
-
   inline double calculateSmoothnessCost() {
-    auto torque = a1_->getGeneralizedForce().e().tail(nJoints_);
-    auto c_s = 0.5 * control_dt_;
-    return k_c * c_s * (previousTorque_ - torque).squaredNorm();
+    auto currPositions_ = gc_.tail(nJoints_);
+    return -(currPositions_ - 2 * previousJointPositions_ + previous2JointPositions_).norm();
   }
 };
 

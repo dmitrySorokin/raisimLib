@@ -22,6 +22,8 @@ environment:
       coeff: 0.00002
     footClearance:
       coeff: 0.01
+    smoothness:
+      coeff: 0.025
   terrain:
     frequency: 1.0
     zScale: 0.2
