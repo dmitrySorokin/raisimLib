@@ -425,7 +425,7 @@ private:
   }
 
   inline double calculateFootClearanceCost() {
-    double p_f_hat = 0.07;
+    double p_f_hat = 0.14;
 
     double footAirTimeCost = 0.0;
     for (auto footBodyIndex : contactIndices_) {
