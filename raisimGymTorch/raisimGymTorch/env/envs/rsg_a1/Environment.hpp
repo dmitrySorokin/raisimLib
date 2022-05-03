@@ -214,7 +214,7 @@ public:
     rewards_.record("angularVelocity", calculateBaseAngularVelocityCost());
     rewards_.record("torque", calculateTorqueCost());
     //rewards_.record("jointSpeed", calculateJointSpeedCost());
-    //rewards_.record("footClearance", calculateFootClearanceCost());
+    rewards_.record("footClearance", calculateFootClearanceCost());
     //rewards_.record("footSlip", calculateSlipCost());
     //rewards_.record("orientation", calculateOrientationCost());
     //rewards_.record("smoothness", calculateSmoothnessCost());
@@ -424,15 +424,8 @@ private:
     return -a1_->getGeneralizedForce().e().tail(nJoints_).lpNorm<1>();
   }
 
-  inline double calculateJointSpeedCost() {
-    auto joint_velocities = gv_.tail(nJoints_);
-    auto cjs = 0.03 * control_dt_;
-    return k_c * cjs * joint_velocities.squaredNorm();
-  }
-
   inline double calculateFootClearanceCost() {
-    auto p_f_hat = cfg_["reward"]["AirTime"]["desired_foot_height"].template As<double>();
-    auto c_f = 0.1 * control_dt_;
+    double p_f_hat = 0.07;
 
     double footAirTimeCost = 0.0;
     for (auto footBodyIndex : contactIndices_) {
@@ -443,12 +436,18 @@ private:
       // We only use xy velocity components TODO why?
       vel[2] = 0.0;
 
-      if (footContactState_[contactSequentialIndex_[footBodyIndex]] == false) {
+      if (!footContactState_[contactSequentialIndex_[footBodyIndex]]) {
         footAirTimeCost += (p_f_hat - pos[2]) * (p_f_hat - pos[2]) * vel.squaredNorm();
       }
     }
 
-    return k_c * c_f * footAirTimeCost;
+    return -footAirTimeCost;
+  }
+
+  inline double calculateJointSpeedCost() {
+    auto joint_velocities = gv_.tail(nJoints_);
+    auto cjs = 0.03 * control_dt_;
+    return k_c * cjs * joint_velocities.squaredNorm();
   }
 
   inline double calculateSlipCost() {
