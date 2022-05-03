@@ -18,6 +18,8 @@ environment:
       coeff: 0.05
     angularVelocity:
       coeff: 0.04
+    torque:
+      coeff: 0.00002
   terrain:
     frequency: 1.0
     zScale: 0.2

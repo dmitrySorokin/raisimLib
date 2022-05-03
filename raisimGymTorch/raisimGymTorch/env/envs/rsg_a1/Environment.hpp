@@ -212,7 +212,7 @@ public:
 
     rewards_.record("linearVelocity", calculateBaseLinearVelocityCost());
     rewards_.record("angularVelocity", calculateBaseAngularVelocityCost());
-    //rewards_.record("torque", calculateTorqueCost());
+    rewards_.record("torque", calculateTorqueCost());
     //rewards_.record("jointSpeed", calculateJointSpeedCost());
     //rewards_.record("footClearance", calculateFootClearanceCost());
     //rewards_.record("footSlip", calculateSlipCost());
@@ -244,16 +244,17 @@ public:
 
   void updateObservation() {
     a1_->getState(gc_, gv_);
-    raisim::Vec<4> quat;
+    raisim::Vec<4> quat = {gc_[3], gc_[4], gc_[5], gc_[6]};
     raisim::Mat<3,3> rot;
-    quat[0] = gc_[3]; quat[1] = gc_[4]; quat[2] = gc_[5]; quat[3] = gc_[6];
     raisim::quatToRotMat(quat, rot);
     bodyLinearVel_ = rot.e().transpose() * gv_.segment(0, 3);
     bodyAngularVel_ = rot.e().transpose() * gv_.segment(3, 3);
 
     Eigen::VectorXd contacts;
     contacts.setZero(footContactState_.size());
-    for (auto &fs: footContactState_)  fs = false;
+    for (auto& fs: footContactState_)  {
+        fs = false;
+    }
 
     /// Dirive contacts vector
     for (auto &contact: a1_->getContacts()) {
@@ -415,14 +416,12 @@ private:
 
   inline double calculateBaseAngularVelocityCost() {
     double v02 = bodyLinearVel_[1] * bodyLinearVel_[1];
-    double wxy2 = bodyAngularVel_[0] * bodyAngularVel_[0] + bodyAngularVel_[1] * bodyAngularVel_[1];
+    double wxy2 = bodyAngularVel_[2] * bodyAngularVel_[2];
     return std::exp(-1.5 * v02) + std::exp(-1.5 * wxy2);
   }
 
   inline double calculateTorqueCost() {
-    auto dt = control_dt_;
-    auto c_t = 0.005 * dt;
-    return k_c * c_t * a1_->getGeneralizedForce().e().tail(nJoints_).squaredNorm();
+    return -a1_->getGeneralizedForce().e().tail(nJoints_).lpNorm<1>();
   }
 
   inline double calculateJointSpeedCost() {
