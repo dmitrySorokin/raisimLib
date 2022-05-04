@@ -23,7 +23,7 @@ environment:
     Work:
       coeff: 0.50
     GroundImpact:
-      coeff: 0 #0.003
+      coeff: 0.0001 #0.003
     Smoothness:
       coeff: 0.03
     ActionMagnitude:
