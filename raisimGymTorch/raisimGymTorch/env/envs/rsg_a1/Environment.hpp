@@ -180,7 +180,7 @@ public:
     }
 
     void reset() final {
-        // std::cout << "env.reset" << std::endl;
+        //std::cout << "env.reset" << std::endl;
         resampleEnvironmentalParameters();
         gc_init_[0] = x0Dist_(randomGenerator_);
         gc_init_[1] = y0Dist_(randomGenerator_);
@@ -238,7 +238,7 @@ public:
         rewards_.record("BaseHeight", -0.25 * calculateBaseHeightCost());
         // rewards_.record("Torque", -0.25*calculateTorqueCost());
         rewards_.record("JointSpeed", -0.25 * calculateJointSpeedCost());
-        rewards_.record("AirTime", -0.25 * calculateAirTimeCost());
+        rewards_.record("AirTime", calculateAirTimeCost());
         rewards_.record("Slip", -0.25 * calculateSlipCost());
         rewards_.record("Orientation", -0.25 * calculateOrientationCost());
         rewards_.record("Smoothness", -0.25 * calculateSmoothnessCost());
@@ -442,7 +442,7 @@ private:
     //
 
     inline double calculateBaseForwardVelocityCost() {
-        return std::max(std::min(bodyLinearVel_[0], 0.35), 1e-7);
+        return std::max(std::min(bodyLinearVel_[0], 0.6), 1e-7);
     }
 
     inline double calculateBaseLateralAndRotationCost() {

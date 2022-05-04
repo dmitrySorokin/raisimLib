@@ -23,13 +23,13 @@ environment:
     Work:
       coeff: 0.50
     GroundImpact:
-      coeff: 0.0001 #0.003
+      coeff: 0 #0.003
     Smoothness:
       coeff: 0.03
     ActionMagnitude:
       coeff: 0.005
     JointSpeed:
-      coeff: 0.006
+      coeff: 0 #0.006
     Orientation:
       coeff: 2.4
     ZAcceleration:
