@@ -192,10 +192,10 @@ public:
         updateObservation();
         steps_ = 0;
 
-        // for (const auto& [name, value] : rewards_.getStdMap()) {
-        //     std::cout << name << " " << value << std::endl;
-        // }
-        // std::cout << "----------\n\n";
+        //for (const auto& [name, value] : rewards_.getStdMap()) {
+        //    std::cout << name << " " << value << std::endl;
+        //}
+        //std::cout << "----------\n\n";
 
         rewards_.reset();
     }
@@ -238,7 +238,7 @@ public:
         rewards_.record("BaseHeight", -0.25 * calculateBaseHeightCost());
         // rewards_.record("Torque", -0.25*calculateTorqueCost());
         rewards_.record("JointSpeed", -0.25 * calculateJointSpeedCost());
-        rewards_.record("AirTime", calculateAirTimeCost());
+        rewards_.record("AirTime", -0.25 * calculateAirTimeCost());
         rewards_.record("Slip", -0.25 * calculateSlipCost());
         rewards_.record("Orientation", -0.25 * calculateOrientationCost());
         rewards_.record("Smoothness", -0.25 * calculateSmoothnessCost());
