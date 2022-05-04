@@ -33,6 +33,7 @@ env = VecEnv(
     rsg_a1.RaisimGymEnv(home_path + "/rsc", dump(cfg['environment'], Dumper=RoundTripDumper)),
     normalize_ob=True
 )
+env.reset()
 
 # shortcuts
 ob_dim = env.num_obs
@@ -57,7 +58,6 @@ else:
 
     for episode in range(100):
         done = False
-        env.reset()
         reward_ll_sum = 0
         steps = 0
         while not done:
@@ -71,7 +71,7 @@ else:
             done = dones[0]
         print('----------------------------------------------------')
         print(steps)
-        print('{:<40} {:>6}'.format("average ll reward: ", '{:0.10f}'.format(reward_ll_sum / steps)))
+        print('{:<40} {:>6}'.format("average ll reward: ", '{:0.10f}'.format(reward_ll_sum)))
         print('{:<40} {:>6}'.format("time elapsed [sec]: ", '{:6.4f}'.format(steps * 0.01)))
         print('----------------------------------------------------\n')
 

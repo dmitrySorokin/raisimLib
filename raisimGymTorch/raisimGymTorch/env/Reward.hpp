@@ -13,9 +13,9 @@
 namespace raisim {
 
 struct RewardElement {
-    float coefficient;
-    float reward;
-    float integral;
+    float coefficient = 1.0;
+    float reward = 0.0;
+    float integral = 0.0;
 };
 
 class Reward {
@@ -65,27 +65,20 @@ public:
         }
     }
 
-    const std::map<std::string, float>& getStdMapOfRewardIntegral() {
-        for (auto& rw : rewards_) {
-            costSum_[rw.first] = rw.second.integral;
+    std::map<std::string, float> getStdMap() {
+        std::map<std::string, float> rewardMap_;
+        float total = 0;
+        for (const auto& rw : rewards_) {
+            rewardMap_[rw.first] = rw.second.integral;
+            total += rw.second.integral;
         }
-
-        return costSum_;
-    }
-
-    const std::map<std::string, float>& getStdMap() {
-        for (auto& rw : rewards_) {
-            rewardMap_[rw.first] = rw.second.reward;
-        }
-        rewardMap_["reward_sum"] = sum();
+        rewardMap_["reward_sum"] = total;
 
         return rewardMap_;
     }
 
 private:
     std::map<std::string, raisim::RewardElement> rewards_;
-    std::map<std::string, float> costSum_;
-    std::map<std::string, float> rewardMap_;
 };
 
 }  // namespace raisim

@@ -180,6 +180,7 @@ public:
     }
 
     void reset() final {
+        // std::cout << "env.reset" << std::endl;
         resampleEnvironmentalParameters();
         gc_init_[0] = x0Dist_(randomGenerator_);
         gc_init_[1] = y0Dist_(randomGenerator_);
@@ -190,6 +191,11 @@ public:
         previous2JointPositions_ = gc_.tail(nJoints_);
         updateObservation();
         steps_ = 0;
+
+        // for (const auto& [name, value] : rewards_.getStdMap()) {
+        //     std::cout << name << " " << value << std::endl;
+        // }
+        // std::cout << "----------\n\n";
 
         rewards_.reset();
     }
@@ -240,8 +246,8 @@ public:
         // New terms
         rewards_.record("Work", -0.25 * calculateWorkCost());
         rewards_.record("GroundImpact", -0.25 * calculateGroundImpactCost());
-        rewards_.record("ActionMagnitude", -calculateActionMagnitudeCost());
-        rewards_.record("ZAcceleration", -calculateZAccelerationCost());
+        // rewards_.record("ActionMagnitude", -calculateActionMagnitudeCost());
+        // rewards_.record("ZAcceleration", -calculateZAccelerationCost());
 
         // Apply random force to the COM
         auto applyingForceDecision = decisionDist_(randomGenerator_);
