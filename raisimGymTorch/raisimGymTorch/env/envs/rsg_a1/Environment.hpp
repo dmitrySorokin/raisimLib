@@ -328,7 +328,7 @@ private:
   bool visualizable_ = false;
   raisim::ArticulatedSystem* a1_;
   Eigen::VectorXd gc_init_, gv_init_, gc_, gv_, pTarget_, pTarget12_, vTarget_;
-  double terminalRewardCoeff_ = -10.;
+  double terminalRewardCoeff_ = -100.;
   Eigen::VectorXd actionMean_, actionStd_, obDouble_, obMean_, obStd_;
   Eigen::Vector3d bodyLinearVel_, bodyAngularVel_;
   Eigen::Vector4d groundImpactForces_;
