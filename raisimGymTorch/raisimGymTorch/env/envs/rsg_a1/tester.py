@@ -23,7 +23,7 @@ log_path = "/".join(args.weight.split("/")[:-1])
 home_path = task_path + "/../../../../.."
 
 # config
-cfg = YAML().load(open(log_path + "/cfg.yaml", 'r'))
+cfg = YAML().load(open(task_path + "/cfg.yaml", 'r'))
 
 # create environment from the configuration file
 cfg['environment']['num_envs'] = 1
