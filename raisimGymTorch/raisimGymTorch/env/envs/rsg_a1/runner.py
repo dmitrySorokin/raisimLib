@@ -45,8 +45,8 @@ num_threads = cfg['environment']['num_threads']
 # Training
 n_steps = 128
 total_steps = n_steps * env.num_envs
-
-avg_rewards = []
+avg_rewards = np.zeros(env.num_envs)
+avg_steps = np.zeros(env.num_envs)
 
 actor = ppo_module.Actor(
     ppo_module.MLP(cfg['architecture']['policy_net'], nn.LeakyReLU, ob_dim, act_dim),
@@ -65,17 +65,18 @@ saver = ConfigurationSaver(log_dir=home_path + "/raisimGymTorch/data/"+task_name
 
 # tensorboard_launcher(saver.data_dir+"/..")  # press refresh (F5) after the first ppo update
 
-ppo = PPO.PPO(actor=actor,
-              critic=critic,
-              num_envs=cfg['environment']['num_envs'],
-              num_transitions_per_env=n_steps,
-              num_learning_epochs=4,
-              gamma=0.996,
-              lam=0.95,
-              num_mini_batches=4,
-              device=device,
-              log_dir=saver.data_dir,
-              shuffle_batch=True,
+ppo = PPO.PPO(
+    actor=actor,
+    critic=critic,
+    num_envs=cfg['environment']['num_envs'],
+    num_transitions_per_env=n_steps,
+    num_learning_epochs=4,
+    gamma=0.996,
+    lam=0.95,
+    num_mini_batches=4,
+    device=device,
+    log_dir=saver.data_dir,
+    shuffle_batch=True,
 )
 
 if mode == 'retrain':
@@ -84,9 +85,6 @@ if mode == 'retrain':
 for update in range(1000000):
     start = time.time()
     env.reset()
-    reward_ll_sum = 0
-    done_sum = 0
-    average_dones = 0.
 
     if update % cfg['environment']['eval_every_n'] == 0:
         print("Visualizing and evaluating the current policy")
@@ -105,15 +103,14 @@ for update in range(1000000):
         action = ppo.act(obs)
         reward, dones = env.step(action)
         ppo.step(value_obs=obs, rews=reward, dones=dones)
-        done_sum = done_sum + np.sum(dones)
-        reward_ll_sum = reward_ll_sum + np.sum(reward)
+        avg_rewards = avg_rewards * (1 - dones) + reward
+        avg_steps = avg_steps * (1 - dones) + 1
 
     # take st step to get value obs
     obs = env.observe()
     ppo.update(actor_obs=obs, value_obs=obs, log_this_iteration=update % 10 == 0, update=update)
-    average_ll_performance = reward_ll_sum / total_steps
-    average_dones = done_sum / total_steps
-    avg_rewards.append(average_ll_performance)
+    average_ll_performance = np.mean(avg_rewards)
+    average_steps = np.mean(avg_steps)
 
     actor.update()
     # actor.distribution.enforce_minimum_std((torch.ones(12)*0.2).to(device))
@@ -126,7 +123,7 @@ for update in range(1000000):
     print('----------------------------------------------------')
     print('{:>6}th iteration'.format(update))
     print('{:<40} {:>6}'.format("average ll reward: ", '{:0.10f}'.format(average_ll_performance)))
-    print('{:<40} {:>6}'.format("dones: ", '{:0.6f}'.format(average_dones)))
+    print('{:<40} {:>6}'.format("steps: ", '{:0.6f}'.format(average_steps)))
     print('{:<40} {:>6}'.format("time elapsed in this iteration: ", '{:6.4f}'.format(end - start)))
     print('{:<40} {:>6}'.format("fps: ", '{:6.0f}'.format(total_steps / (end - start))))
     print('{:<40} {:>6}'.format("real time factor: ", '{:6.0f}'.format(total_steps / (end - start)
