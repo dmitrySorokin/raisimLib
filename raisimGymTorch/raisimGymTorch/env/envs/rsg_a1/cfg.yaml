@@ -23,7 +23,7 @@ environment:
     Work:
       coeff: 0.50
     GroundImpact:
-      coeff: 0.003
+      coeff: 0 #0.003
     Smoothness:
       coeff: 0.03
     ActionMagnitude:
@@ -38,7 +38,7 @@ environment:
       coeff: 0.4
     AirTime:
       coeff: 0.3
-      desired_foot_height: 0.07
+      desired_foot_height: 0.14
     Torque:
       coeff: 0.005
     BaseHeight:

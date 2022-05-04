@@ -239,7 +239,7 @@ public:
 
         // New terms
         rewards_.record("Work", -0.25 * calculateWorkCost());
-        rewards_.record("GroundImpact", calculateGroundImpactCost());
+        rewards_.record("GroundImpact", -0.25 * calculateGroundImpactCost());
         // rewards_.record("ActionMagnitude", -calculateActionMagnitudeCost());
         // rewards_.record("ZAcceleration", -calculateZAccelerationCost());
 
