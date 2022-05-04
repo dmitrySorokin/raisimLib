@@ -5,7 +5,7 @@ environment:
   render: True
   visualize_command: False
   num_envs: 100
-  eval_every_n: 3000
+  eval_every_n: 100
   num_threads: 30
   simulation_dt: 0.001
   #simulation_dt: 0.01
@@ -23,7 +23,7 @@ environment:
     Work:
       coeff: 0.50
     GroundImpact:
-      coeff: 0.003
+      coeff: 0 #0.003
     Smoothness:
       coeff: 0.03
     ActionMagnitude:

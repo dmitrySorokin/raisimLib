@@ -115,8 +115,7 @@ if __name__ == '__main__':
         # actor.distribution.enforce_minimum_std((torch.ones(12)*0.2).to(device))
 
         # curriculum update. Implement it in Environment.hpp
-        if update % 30 == 0:
-            env.curriculum_callback()
+        env.curriculum_callback()
 
         end = time.time()
 
