@@ -240,8 +240,8 @@ public:
         // New terms
         rewards_.record("Work", -0.25 * calculateWorkCost());
         rewards_.record("GroundImpact", -0.25 * calculateGroundImpactCost());
-        // rewards_.record("ActionMagnitude", -calculateActionMagnitudeCost());
-        // rewards_.record("ZAcceleration", -calculateZAccelerationCost());
+        rewards_.record("ActionMagnitude", -calculateActionMagnitudeCost());
+        rewards_.record("ZAcceleration", -calculateZAccelerationCost());
 
         // Apply random force to the COM
         auto applyingForceDecision = decisionDist_(randomGenerator_);
