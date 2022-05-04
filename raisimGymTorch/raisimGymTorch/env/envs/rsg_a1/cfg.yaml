@@ -21,7 +21,7 @@ environment:
     BaseLateralAndRotation:
       coeff: 0.9
     Work:
-      coeff: 0.50
+      coeff: 1.00
     GroundImpact:
       coeff: 0 #0.003
     Smoothness:
@@ -29,7 +29,7 @@ environment:
     ActionMagnitude:
       coeff: 0.005
     JointSpeed:
-      coeff: 0.001
+      coeff: 0.003
     Orientation:
       coeff: 2.4
     ZAcceleration:
