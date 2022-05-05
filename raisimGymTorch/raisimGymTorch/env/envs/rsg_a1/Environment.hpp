@@ -286,7 +286,7 @@ public:
         for (auto& contact : a1_->getContacts()) {
             if (!contact.isSelfCollision() && contact.getPairObjectBodyType() == BodyType::STATIC) {
                 if (contactIndices_.find(contact.getlocalBodyIndex()) != contactIndices_.end()) {
-                    groundImpactForce = contact.getImpulse().e().norm() / world_->getTimeStep();
+                    auto groundImpactForce = contact.getImpulse().e().norm() / world_->getTimeStep();
                     auto bodyIndex = contact.getlocalBodyIndex();
                     groundImpactForces_[contactSequentialIndex_[bodyIndex]] = groundImpactForce;
                     footContactState_[contactSequentialIndex_[bodyIndex]] = true;
