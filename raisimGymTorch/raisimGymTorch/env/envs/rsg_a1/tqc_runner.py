@@ -123,16 +123,15 @@ if __name__ == '__main__':
             }, saver.data_dir+"/full_"+str(update)+'.pt')
             env.save_scaling(saver.data_dir, str(update))
 
-        for step in range(n_steps):
-            state = env.observe(update_statistics=True)
-            with torch.no_grad():
-                action, _ = actor(torch.from_numpy(state).to(device))
-                action = action.cpu().numpy()
-            reward, dones = env.step(action)
-            next_state = env.observe(update_statistics=False)
-            for st, act, next_st, rew, done in zip(state, action, next_state, reward, dones):
-                replay_buffer.add(st, act, next_st, rew, done)
-                reward_queue.append(rew)
+        state = env.observe(update_statistics=True)
+        with torch.no_grad():
+            action, _ = actor(torch.from_numpy(state).to(device))
+            action = action.cpu().numpy()
+        reward, dones = env.step(action)
+        next_state = env.observe(update_statistics=False)
+        for st, act, next_st, rew, done in zip(state, action, next_state, reward, dones):
+            replay_buffer.add(st, act, next_st, rew, done)
+            reward_queue.append(rew)
 
         # Train agent after collecting sufficient data
         if (update + 1) * env.num_envs >= args.batch_size:
