@@ -180,7 +180,7 @@ public:
     }
 
     void reset() final {
-        //std::cout << "env.reset" << std::endl;
+        // std::cout << "env.reset" << std::endl;
         resampleEnvironmentalParameters();
         gc_init_[0] = x0Dist_(randomGenerator_);
         gc_init_[1] = y0Dist_(randomGenerator_);
@@ -192,10 +192,10 @@ public:
         updateObservation();
         steps_ = 0;
 
-        //for (const auto& [name, value] : rewards_.getStdMap()) {
-        //    std::cout << name << " " << value << std::endl;
-        //}
-        //std::cout << "----------\n\n";
+        // for (const auto& [name, value] : rewards_.getStdMap()) {
+        //     std::cout << name << " " << value << std::endl;
+        // }
+        // std::cout << "----------\n\n";
 
         rewards_.reset();
     }
@@ -247,7 +247,7 @@ public:
         rewards_.record("Work", -0.25 * calculateWorkCost());
         rewards_.record("GroundImpact", -0.25 * calculateGroundImpactCost());
         // rewards_.record("ActionMagnitude", -calculateActionMagnitudeCost());
-        // rewards_.record("ZAcceleration", -calculateZAccelerationCost());
+        rewards_.record("ZAcceleration", -calculateZAccelerationCost());
 
         // Apply random force to the COM
         auto applyingForceDecision = decisionDist_(randomGenerator_);
@@ -286,11 +286,7 @@ public:
         for (auto& contact : a1_->getContacts()) {
             if (!contact.isSelfCollision() && contact.getPairObjectBodyType() == BodyType::STATIC) {
                 if (contactIndices_.find(contact.getlocalBodyIndex()) != contactIndices_.end()) {
-                    auto normalForce = contact.getContactFrame().e() * contact.getImpulse().e() /
-                                       world_->getTimeStep();
-                    auto groundImpactForce = sqrt(pow(normalForce[0], 2) + pow(normalForce[1], 2) +
-                                                  pow(normalForce[2], 2));
-
+                    groundImpactForce = contact.getImpulse().e().norm() / world_->getTimeStep();
                     auto bodyIndex = contact.getlocalBodyIndex();
                     groundImpactForces_[contactSequentialIndex_[bodyIndex]] = groundImpactForce;
                     footContactState_[contactSequentialIndex_[bodyIndex]] = true;
