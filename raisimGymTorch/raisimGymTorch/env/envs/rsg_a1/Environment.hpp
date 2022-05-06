@@ -76,7 +76,6 @@ public:
         gv_init_.setZero(gvDim_);
         pTarget_.setZero(gcDim_);
         vTarget_.setZero(gvDim_);
-        pTarget12_.setZero(nJoints_);
 
         // Generate robot initial pose
         x0Dist_ = std::uniform_real_distribution<double>(-1, 1);
@@ -202,18 +201,15 @@ public:
 
     void curriculumUpdate() final {
         k_c = std::min(pow(k_c, k_d), 1.0);
-
-        if (visualizable_) {
-            std::cout << "Curriculum factor: " << k_c << std::endl;
-        }
+        std::cout << "Curriculum factor: " << k_c << std::endl;
     }
 
     float step(const Eigen::Ref<EigenVec>& action) final {
         /// action scaling
-        pTarget12_ = action.cast<double>();
-        pTarget12_ = pTarget12_.cwiseProduct(actionStd_);
-        pTarget12_ += actionMean_;
-        pTarget_.tail(nJoints_) = pTarget12_;
+        Eigen::VectorXd pTarget12 = action.cast<double>();
+        // pTarget12 = pTarget12.cwiseMin(1).cwiseMax(-1);
+        pTarget12 = actionMean_ + pTarget12.cwiseProduct(actionStd_);
+        pTarget_.tail(nJoints_) = pTarget12;
 
         a1_->setPdTarget(pTarget_, vTarget_);
 
@@ -345,7 +341,7 @@ private:
     int gcDim_, gvDim_, nJoints_;
     bool visualizable_ = false;
     raisim::ArticulatedSystem* a1_;
-    Eigen::VectorXd gc_init_, gv_init_, gc_, gv_, pTarget_, pTarget12_, vTarget_;
+    Eigen::VectorXd gc_init_, gv_init_, gc_, gv_, pTarget_, vTarget_;
     double terminalRewardCoeff_ = -10.;
     Eigen::VectorXd actionMean_, actionStd_, obDouble_, obMean_, obStd_;
     Eigen::Vector3d bodyLinearVel_, bodyAngularVel_;
