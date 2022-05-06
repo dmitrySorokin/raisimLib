@@ -117,19 +117,14 @@ class PPO:
                 sigma_batch = self.actor.distribution.std
 
                 # KL
-                if self.desired_kl != None and self.schedule == 'adaptive':
-                    with torch.no_grad():
-                        kl = torch.sum(
-                            torch.log(sigma_batch / old_sigma_batch + 1.e-5) + (torch.square(old_sigma_batch) + torch.square(old_mu_batch - mu_batch)) / (2.0 * torch.square(sigma_batch)) - 0.5, axis=-1)
-                        kl_mean = torch.mean(kl)
+                kl = torch.sum(
+                    torch.log(sigma_batch / old_sigma_batch + 1.e-5) + (torch.square(old_sigma_batch) + torch.square(old_mu_batch - mu_batch)) / (2.0 * torch.square(sigma_batch)) - 0.5, axis=-1)
+                kl_mean = torch.mean(kl)
 
-                        if kl_mean > self.desired_kl * 2.0:
-                            self.learning_rate = max(1e-5, self.learning_rate / 1.2)
-                        elif kl_mean < self.desired_kl / 2.0 and kl_mean > 0.0:
-                            self.learning_rate = min(1e-2, self.learning_rate * 1.2)
-
-                        for param_group in self.optimizer.param_groups:
-                            param_group['lr'] = self.learning_rate
+                    #if kl_mean > self.desired_kl * 2.0:
+                    #    self.learning_rate = max(1e-5, self.learning_rate / 1.2)
+                    #elif kl_mean < self.desired_kl / 2.0 and kl_mean > 0.0:
+                    #    self.learning_rate = min(1e-2, self.learning_rate * 1.2)
 
                 # Surrogate loss
                 ratio = torch.exp(actions_log_prob_batch - torch.squeeze(old_actions_log_prob_batch))
@@ -148,7 +143,7 @@ class PPO:
                 else:
                     value_loss = (returns_batch - value_batch).pow(2).mean()
 
-                loss = surrogate_loss + self.value_loss_coef * value_loss - self.entropy_coef * entropy_batch.mean()
+                loss = surrogate_loss + self.value_loss_coef * value_loss - self.entropy_coef * entropy_batch.mean() + kl_mean
 
                 # Gradient step
                 self.optimizer.zero_grad()
