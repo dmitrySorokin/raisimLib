@@ -6,21 +6,19 @@
 import numpy as np
 import platform
 import os
+import gym
 
 
 class RaisimGymVecEnv:
-    def __init__(self, impl, seed=0, clip_obs=10., update_stats=True):
+    def __init__(self, impl, seed=0, update_stats=True):
         if platform.system() == 'Darwin':
             os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
-        self.clip_obs = clip_obs
         self.update_stats = update_stats
         self.wrapper = impl
-        self.num_obs = self.wrapper.getObDim()
-        self.num_acts = self.wrapper.getActionDim()
         self.wrapper.setSeed(seed)
-        self.count = 0.0
-        self.mean = np.zeros(self.num_obs, dtype=np.float32)
-        self.var = np.zeros(self.num_obs, dtype=np.float32)
+
+        self.observation_space = gym.spaces.Box(-np.inf, np.inf, (self.wrapper.getObDim(),))
+        self.action_space = gym.spaces.Box(-1, 1, (self.wrapper.getActionDim(),))
 
     def seed(self, seed=None):
         self.wrapper.setSeed(seed)
@@ -44,22 +42,20 @@ class RaisimGymVecEnv:
         return self.observe(), reward, done, self.wrapper.rewardInfo()
 
     def load_scaling(self, dir_name, iteration, count=1e5):
-        mean_file_name = f'{dir_name}/mean{iteration}.csv'
-        var_file_name = f'{dir_name}/var{iteration}.csv'
-        self.count = count
-        self.mean = np.loadtxt(mean_file_name, dtype=np.float32)
-        self.var = np.loadtxt(var_file_name, dtype=np.float32)
-        self.wrapper.setObStatistics(self.mean, self.var, self.count)
+        mean = np.loadtxt(f'{dir_name}/mean{iteration}.csv', dtype=np.float32)
+        var = np.loadtxt(f'{dir_name}/var{iteration}.csv', dtype=np.float32)
+        self.wrapper.setObStatistics(mean, var, count)
 
     def save_scaling(self, dir_name, iteration):
-        mean_file_name = f'{dir_name}/mean{iteration}.csv'
-        var_file_name = f'{dir_name}/var{iteration}.csv'
-        self.wrapper.getObStatistics(self.mean, self.var, self.count)
-        np.savetxt(mean_file_name, self.mean)
-        np.savetxt(var_file_name, self.var)
+        mean = np.zeros(self.observation_space.shape, dtype=np.float32)
+        var = np.zeros(self.observation_space.shape, dtype=np.float32)
+        count = 0
+        self.wrapper.getObStatistics(mean, var, count)
+        np.savetxt(f'{dir_name}/mean{iteration}.csv', mean)
+        np.savetxt(f'{dir_name}/var{iteration}.csv', var)
 
     def observe(self):
-        observation = np.zeros([self.num_envs, self.num_obs], dtype=np.float32)
+        observation = np.zeros([self.num_envs, *self.observation_space.shape], dtype=np.float32)
         self.wrapper.observe(observation, self.update_stats)
         return observation
 

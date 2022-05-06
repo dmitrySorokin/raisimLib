@@ -16,7 +16,7 @@ from collections import deque
 
 if __name__ == '__main__':
     # task specification
-    task_name = "anymal_locomotion"
+    task_name = 'anymal_locomotion'
 
     # configuration
     parser = argparse.ArgumentParser()
@@ -29,18 +29,18 @@ if __name__ == '__main__':
 
     # directories
     task_path = os.path.dirname(os.path.realpath(__file__))
-    home_path = task_path + "/../../../../.."
+    home_path = task_path + '/../../../../..'
 
     # config
-    cfg = YAML().load(open(task_path + "/cfg.yaml", 'r'))
+    cfg = YAML().load(open(task_path + '/cfg.yaml', 'r'))
 
     # create environment from the configuration file
-    env = VecEnv(RaisimGymEnv(home_path + "/rsc", dump(cfg['environment'], Dumper=RoundTripDumper)))
+    env = VecEnv(RaisimGymEnv(home_path + '/rsc', dump(cfg['environment'], Dumper=RoundTripDumper)))
     obs = env.reset()
 
     # shortcuts
-    ob_dim = env.num_obs
-    act_dim = env.num_acts
+    ob_dim = env.observation_space.shape[0]
+    act_dim = env.action_space.shape[0]
     num_threads = cfg['environment']['num_threads']
 
     # Training
@@ -60,14 +60,14 @@ if __name__ == '__main__':
     )
 
     saver = ConfigurationSaver(
-        log_dir=home_path + "/raisimGymTorch/data/" + task_name,
-        save_items=[task_path + "/cfg.yaml", task_path + "/Environment.hpp"]
+        log_dir=home_path + '/raisimGymTorch/data/' + task_name,
+        save_items=[task_path + '/cfg.yaml', task_path + '/Environment.hpp']
     )
 
     ppo = PPO.PPO(
         actor=actor,
         critic=critic,
-        num_envs=cfg['environment']['num_envs'],
+        num_envs=env.num_envs,
         num_transitions_per_env=n_steps,
         num_learning_epochs=4,
         gamma=0.996,
@@ -83,21 +83,11 @@ if __name__ == '__main__':
 
     curr_rewards = np.zeros(env.num_envs)
     curr_steps = np.zeros(env.num_envs)
-    episode_rewards = deque(maxlen=10)
-    episode_steps = deque(maxlen=10)
+    episode_rewards = deque(maxlen=env.num_envs)
+    episode_steps = deque(maxlen=env.num_envs)
 
     for update in range(1000000):
         start = time.time()
-
-        if update % cfg['environment']['eval_every_n'] == 0:
-            print("Visualizing and evaluating the current policy")
-            torch.save({
-                'actor_architecture_state_dict': actor.architecture.state_dict(),
-                'actor_distribution_state_dict': actor.distribution.state_dict(),
-                'critic_architecture_state_dict': critic.architecture.state_dict(),
-                'optimizer_state_dict': ppo.optimizer.state_dict(),
-            }, saver.data_dir + "/full_" + str(update) + '.pt')
-            env.save_scaling(saver.data_dir, str(update))
 
         # actual training
         for step in range(n_steps):
@@ -124,6 +114,15 @@ if __name__ == '__main__':
         env.curriculum_callback()
 
         end = time.time()
+
+        if update % cfg['environment']['eval_every_n'] == 0:
+            torch.save({
+                'actor_architecture_state_dict': actor.architecture.state_dict(),
+                'actor_distribution_state_dict': actor.distribution.state_dict(),
+                'critic_architecture_state_dict': critic.architecture.state_dict(),
+                'optimizer_state_dict': ppo.optimizer.state_dict(),
+            }, saver.data_dir + '/full_' + str(update) + '.pt')
+            env.save_scaling(saver.data_dir, str(update))
 
         print('----------------------------------------------------')
         print(f'{update:>6}th iteration')

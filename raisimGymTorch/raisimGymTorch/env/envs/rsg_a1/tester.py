@@ -40,8 +40,8 @@ if __name__ == '__main__':
     obs = env.reset()
 
     # shortcuts
-    ob_dim = env.num_obs
-    act_dim = env.num_acts
+    ob_dim = env.observation_space.shape[0]
+    act_dim = env.action_space.shape[0]
 
     weight_path = args.weight
     iteration_number = weight_path.rsplit('/', 1)[1].split('_', 1)[1].rsplit('.', 1)[0]
