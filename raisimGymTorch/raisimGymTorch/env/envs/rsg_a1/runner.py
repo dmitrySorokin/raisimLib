@@ -2,7 +2,7 @@ from ruamel.yaml import YAML, dump, RoundTripDumper
 from raisimGymTorch.env.bin.rsg_a1 import RaisimGymEnv
 from raisimGymTorch.env.bin.rsg_a1 import NormalSampler
 from raisimGymTorch.env.RaisimGymVecEnv import RaisimGymVecEnv as VecEnv
-from raisimGymTorch.helper.raisim_gym_helper import ConfigurationSaver, load_param, tensorboard_launcher
+from raisimGymTorch.helper.raisim_gym_helper import ConfigurationSaver, load_param
 import os
 import time
 import raisimGymTorch.algo.ppo.module as ppo_module
@@ -11,6 +11,7 @@ import torch.nn as nn
 import numpy as np
 import torch
 import argparse
+from collections import deque
 
 
 if __name__ == '__main__':
@@ -35,7 +36,7 @@ if __name__ == '__main__':
 
     # create environment from the configuration file
     env = VecEnv(RaisimGymEnv(home_path + "/rsc", dump(cfg['environment'], Dumper=RoundTripDumper)))
-    env.reset()
+    obs = env.reset()
 
     # shortcuts
     ob_dim = env.num_obs
@@ -45,8 +46,6 @@ if __name__ == '__main__':
     # Training
     n_steps = 128
     total_steps = n_steps * env.num_envs
-    avg_rewards = np.zeros(env.num_envs)
-    avg_steps = np.zeros(env.num_envs)
 
     actor = ppo_module.Actor(
         ppo_module.MLP(cfg['architecture']['policy_net'], nn.LeakyReLU, ob_dim, act_dim),
@@ -60,10 +59,10 @@ if __name__ == '__main__':
         device
     )
 
-    saver = ConfigurationSaver(log_dir=home_path + "/raisimGymTorch/data/"+task_name,
-                               save_items=[task_path + "/cfg.yaml", task_path + "/Environment.hpp"])
-
-    # tensorboard_launcher(saver.data_dir+"/..")  # press refresh (F5) after the first ppo update
+    saver = ConfigurationSaver(
+        log_dir=home_path + "/raisimGymTorch/data/" + task_name,
+        save_items=[task_path + "/cfg.yaml", task_path + "/Environment.hpp"]
+    )
 
     ppo = PPO.PPO(
         actor=actor,
@@ -82,6 +81,11 @@ if __name__ == '__main__':
     if weight_path is not None:
         load_param(weight_path, env, actor, critic, ppo.optimizer, saver.data_dir)
 
+    curr_rewards = np.zeros(env.num_envs)
+    curr_steps = np.zeros(env.num_envs)
+    episode_rewards = deque(maxlen=10)
+    episode_steps = deque(maxlen=10)
+
     for update in range(1000000):
         start = time.time()
 
@@ -92,24 +96,26 @@ if __name__ == '__main__':
                 'actor_distribution_state_dict': actor.distribution.state_dict(),
                 'critic_architecture_state_dict': critic.architecture.state_dict(),
                 'optimizer_state_dict': ppo.optimizer.state_dict(),
-            }, saver.data_dir+"/full_"+str(update)+'.pt')
-            # we create another graph just to demonstrate the save/load method
+            }, saver.data_dir + "/full_" + str(update) + '.pt')
             env.save_scaling(saver.data_dir, str(update))
 
         # actual training
         for step in range(n_steps):
-            obs = env.observe()
             action = ppo.act(obs)
-            reward, dones = env.step(action)
+            next_obs, reward, dones, info = env.step(action)
             ppo.step(value_obs=obs, rews=reward, dones=dones)
-            avg_rewards = (avg_rewards + reward) * (1 - dones)
-            avg_steps = (avg_steps + 1) * (1 - dones)
+            obs = next_obs
+
+            curr_rewards += reward
+            curr_steps += 1
+            (ids,) = np.where(dones)
+            episode_rewards.extend(curr_rewards[ids])
+            episode_steps.extend(curr_steps[ids])
+            curr_rewards[ids] *= 0
+            curr_steps[ids] *= 0
 
         # take st step to get value obs
-        obs = env.observe()
         ppo.update(actor_obs=obs, value_obs=obs, log_this_iteration=update % 10 == 0, update=update)
-        average_ll_performance = np.mean(avg_rewards)
-        average_steps = np.mean(avg_steps)
 
         actor.update()
         # actor.distribution.enforce_minimum_std((torch.ones(12)*0.2).to(device))
@@ -120,11 +126,10 @@ if __name__ == '__main__':
         end = time.time()
 
         print('----------------------------------------------------')
-        print('{:>6}th iteration'.format(update))
-        print('{:<40} {:>6}'.format("average ll reward: ", '{:0.10f}'.format(average_ll_performance)))
-        print('{:<40} {:>6}'.format("steps: ", '{:0.6f}'.format(average_steps)))
-        print('{:<40} {:>6}'.format("time elapsed in this iteration: ", '{:6.4f}'.format(end - start)))
-        print('{:<40} {:>6}'.format("fps: ", '{:6.0f}'.format(total_steps / (end - start))))
-        print('{:<40} {:>6}'.format("real time factor: ", '{:6.0f}'.format(total_steps / (end - start)
-                                                                           * cfg['environment']['control_dt'])))
+        print(f'{update:>6}th iteration')
+        print(f'average ll reward: {np.mean(episode_rewards):0.10f} +- {np.std(episode_rewards):0.10f}')
+        print(f'steps: {np.mean(episode_steps):0.6f} +- {np.std(episode_steps):0.6f}')
+        print(f'time elapsed in this iteration: {end - start:6.4f}')
+        print(f'fps: {total_steps / (end - start):6.0f}')
+        print(f'real time factor: {total_steps / (end - start) * cfg["environment"]["control_dt"]:6.0f}')
         print('----------------------------------------------------\n')

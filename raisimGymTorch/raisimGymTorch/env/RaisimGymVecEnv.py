@@ -9,21 +9,14 @@ import os
 
 
 class RaisimGymVecEnv:
-
-    def __init__(self, impl, normalize_ob=True, seed=0, clip_obs=10.):
-        if platform.system() == "Darwin":
-            os.environ['KMP_DUPLICATE_LIB_OK']='True'
-        self.normalize_ob = normalize_ob
+    def __init__(self, impl, seed=0, clip_obs=10., update_stats=True):
+        if platform.system() == 'Darwin':
+            os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
         self.clip_obs = clip_obs
+        self.update_stats = update_stats
         self.wrapper = impl
         self.num_obs = self.wrapper.getObDim()
         self.num_acts = self.wrapper.getActionDim()
-        self._observation = np.zeros([self.num_envs, self.num_obs], dtype=np.float32)
-        self.actions = np.zeros([self.num_envs, self.num_acts], dtype=np.float32)
-        self.log_prob = np.zeros(self.num_envs, dtype=np.float32)
-        self._reward = np.zeros(self.num_envs, dtype=np.float32)
-        self._done = np.zeros(self.num_envs, dtype=np.bool)
-        self.rewards = [[] for _ in range(self.num_envs)]
         self.wrapper.setSeed(seed)
         self.count = 0.0
         self.mean = np.zeros(self.num_obs, dtype=np.float32)
@@ -45,31 +38,34 @@ class RaisimGymVecEnv:
         self.wrapper.stopRecordingVideo()
 
     def step(self, action):
-        self.wrapper.step(action, self._reward, self._done)
-        return self._reward.copy(), self._done.copy()
+        reward = np.zeros(self.num_envs, dtype=np.float32)
+        done = np.zeros(self.num_envs, dtype=np.bool)
+        self.wrapper.step(action, reward, done)
+        return self.observe(), reward, done, self.wrapper.rewardInfo()
 
     def load_scaling(self, dir_name, iteration, count=1e5):
-        mean_file_name = dir_name + "/mean" + str(iteration) + ".csv"
-        var_file_name = dir_name + "/var" + str(iteration) + ".csv"
+        mean_file_name = f'{dir_name}/mean{iteration}.csv'
+        var_file_name = f'{dir_name}/var{iteration}.csv'
         self.count = count
         self.mean = np.loadtxt(mean_file_name, dtype=np.float32)
         self.var = np.loadtxt(var_file_name, dtype=np.float32)
         self.wrapper.setObStatistics(self.mean, self.var, self.count)
 
     def save_scaling(self, dir_name, iteration):
-        mean_file_name = dir_name + "/mean" + iteration + ".csv"
-        var_file_name = dir_name + "/var" + iteration + ".csv"
+        mean_file_name = f'{dir_name}/mean{iteration}.csv'
+        var_file_name = f'{dir_name}/var{iteration}.csv'
         self.wrapper.getObStatistics(self.mean, self.var, self.count)
         np.savetxt(mean_file_name, self.mean)
         np.savetxt(var_file_name, self.var)
 
-    def observe(self, update_statistics=True):
-        self.wrapper.observe(self._observation, update_statistics)
-        return self._observation
+    def observe(self):
+        observation = np.zeros([self.num_envs, self.num_obs], dtype=np.float32)
+        self.wrapper.observe(observation, self.update_stats)
+        return observation
 
     def reset(self):
-        self._reward = np.zeros(self.num_envs, dtype=np.float32)
         self.wrapper.reset()
+        return self.observe()
 
     def close(self):
         self.wrapper.close()

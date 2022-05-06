@@ -18,25 +18,26 @@ template <class ChildEnvironment>
 class VectorizedEnvironment {
 
 public:
-    explicit VectorizedEnvironment(std::string resourceDir, std::string cfg,
-                                   bool normalizeObservation = true)
-        : resourceDir_(resourceDir), cfgString_(cfg), normalizeObservation_(normalizeObservation) {
+    explicit VectorizedEnvironment(
+        std::string resourceDir, std::string cfg,
+        bool normalizeObservation = true)
+            : resourceDir_(resourceDir), cfgString_(cfg), normalizeObservation_(normalizeObservation) {
         Yaml::Parse(cfg_, cfg);
-
-        if (&cfg_["render"])
-            render_ = cfg_["render"].template As<bool>();
+        render_ = cfg_["render"].template As<bool>();
         init();
     }
 
     ~VectorizedEnvironment() {
-        for (auto *ptr : environments_)
+        for (auto *ptr : environments_) {
             delete ptr;
+        }
     }
 
-    const std::string &getResourceDir() const {
+    const std::string& getResourceDir() const {
         return resourceDir_;
     }
-    const std::string &getCfgString() const {
+
+    const std::string& getCfgString() const {
         return cfgString_;
     }
 
@@ -83,47 +84,62 @@ public:
 
     // resets all environments and returns observation
     void reset() {
-        for (auto env : environments_)
+        for (auto env : environments_) {
             env->reset();
+        }
     }
 
     void observe(Eigen::Ref<EigenRowMajorMat> &ob, bool updateStatistics) {
 #pragma omp parallel for schedule(auto)
-        for (int i = 0; i < num_envs_; i++)
+        for (int i = 0; i < num_envs_; i++) {
             environments_[i]->observe(ob.row(i));
+        }
 
-        if (normalizeObservation_)
+        if (normalizeObservation_) {
             updateObservationStatisticsAndNormalize(ob, updateStatistics);
+        }
     }
 
-    void step(Eigen::Ref<EigenRowMajorMat> &action, Eigen::Ref<EigenVec> &reward,
-              Eigen::Ref<EigenBoolVec> &done) {
+    void step(
+        Eigen::Ref<EigenRowMajorMat>& action,
+        Eigen::Ref<EigenVec>& reward,
+        Eigen::Ref<EigenBoolVec>& done) {
 #pragma omp parallel for schedule(auto)
-        for (int i = 0; i < num_envs_; i++)
+        for (int i = 0; i < num_envs_; i++) {
             perAgentStep(i, action, reward, done);
+        }
     }
 
     void turnOnVisualization() {
-        if (render_)
+        if (render_) {
             environments_[0]->turnOnVisualization();
+        }
     }
+
     void turnOffVisualization() {
-        if (render_)
+        if (render_) {
             environments_[0]->turnOffVisualization();
+        }
     }
+
     void startRecordingVideo(const std::string &videoName) {
-        if (render_)
+        if (render_) {
             environments_[0]->startRecordingVideo(videoName);
+        }
     }
+
     void stopRecordingVideo() {
-        if (render_)
+        if (render_) {
             environments_[0]->stopRecordingVideo();
+        }
     }
+
     void getObStatistics(Eigen::Ref<EigenVec> &mean, Eigen::Ref<EigenVec> &var, float &count) {
         mean = obMean_;
         var = obVar_;
         count = obCount_;
     }
+
     void setObStatistics(Eigen::Ref<EigenVec> &mean, Eigen::Ref<EigenVec> &var, float count) {
         obMean_ = mean;
         obVar_ = var;
@@ -161,9 +177,11 @@ public:
     int getObDim() {
         return obDim_;
     }
+
     int getActionDim() {
         return actionDim_;
     }
+
     int getNumOfEnvs() {
         return num_envs_;
     }
@@ -172,23 +190,26 @@ public:
     void curriculumUpdate() {
         for (auto *env : environments_)
             env->curriculumUpdate();
-    };
+    }
 
     const std::vector<std::map<std::string, float>> &getRewardInfo() {
         return rewardInformation_;
     }
 
+
 private:
-    void updateObservationStatisticsAndNormalize(Eigen::Ref<EigenRowMajorMat> &ob,
-                                                 bool updateStatistics) {
+    void updateObservationStatisticsAndNormalize(
+        Eigen::Ref<EigenRowMajorMat> &ob,
+        bool updateStatistics) {
         if (updateStatistics) {
             recentMean_ = ob.colwise().mean();
             recentVar_ =
                 (ob.rowwise() - recentMean_.transpose()).colwise().squaredNorm() / num_envs_;
 
             delta_ = obMean_ - recentMean_;
-            for (int i = 0; i < obDim_; i++)
+            for (int i = 0; i < obDim_; i++) {
                 delta_[i] = delta_[i] * delta_[i];
+            }
 
             float totCount = obCount_ + num_envs_;
 
@@ -200,13 +221,16 @@ private:
         }
 
 #pragma omp parallel for schedule(auto)
-        for (int i = 0; i < num_envs_; i++)
+        for (int i = 0; i < num_envs_; i++) {
             ob.row(i) = (ob.row(i) - obMean_.transpose())
                             .template cwiseQuotient<>((obVar_ + epsilon).cwiseSqrt().transpose());
+        }
     }
 
-    inline void perAgentStep(int agentId, Eigen::Ref<EigenRowMajorMat> &action,
-                             Eigen::Ref<EigenVec> &reward, Eigen::Ref<EigenBoolVec> &done) {
+    inline void perAgentStep(
+        int agentId, Eigen::Ref<EigenRowMajorMat>& action,
+        Eigen::Ref<EigenVec>& reward,
+        Eigen::Ref<EigenBoolVec>& done) {
         reward[agentId] = environments_[agentId]->step(action.row(agentId));
         rewardInformation_[agentId] = environments_[agentId]->getRewards().getStdMap();
 
@@ -219,12 +243,13 @@ private:
         }
     }
 
-    std::vector<ChildEnvironment *> environments_;
+    std::vector<ChildEnvironment*> environments_;
     std::vector<std::map<std::string, float>> rewardInformation_;
 
     int num_envs_ = 1;
     int obDim_ = 0, actionDim_ = 0;
-    bool recordVideo_ = false, render_ = false;
+    bool recordVideo_ = false;
+    bool render_ = false;
     std::string resourceDir_;
     Yaml::Node cfg_;
     std::string cfgString_;
@@ -246,6 +271,7 @@ public:
     float sample() {
         return normDist_(gen_);
     }
+
     void seed(int i) {
         gen_.seed(i);
     }
@@ -254,6 +280,7 @@ private:
     std::normal_distribution<float> normDist_;
     static thread_local std::mt19937 gen_;
 };
+
 thread_local std::mt19937 raisim::NormalDistribution::gen_;
 
 class NormalSampler {
@@ -267,8 +294,9 @@ public:
     void seed(int seed) {
         // this ensures that every thread gets a different seed
 #pragma omp parallel for schedule(static, 1)
-        for (int i = 0; i < THREAD_COUNT; i++)
+        for (int i = 0; i < THREAD_COUNT; i++) {
             normal_[0].seed(i + seed);
+        }
     }
 
     inline void sample(Eigen::Ref<EigenRowMajorMat> &mean, Eigen::Ref<EigenVec> &std,

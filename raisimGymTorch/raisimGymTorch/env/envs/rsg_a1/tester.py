@@ -8,6 +8,7 @@ import torch
 import argparse
 import numpy as np
 from tqdm import trange
+from pprint import pprint
 
 
 if __name__ == '__main__':
@@ -34,9 +35,9 @@ if __name__ == '__main__':
 
     env = VecEnv(
         rsg_a1.RaisimGymEnv(home_path + "/rsc", dump(cfg['environment'], Dumper=RoundTripDumper)),
-        normalize_ob=True
+        update_stats=False
     )
-    env.reset()
+    obs = env.reset()
 
     # shortcuts
     ob_dim = env.num_obs
@@ -62,21 +63,20 @@ if __name__ == '__main__':
         episode_rewards = []
         episode_steps = []
         for episode in trange(10):
-            done = False
-            total_reward = 0
-            steps = 0
+            done, total_reward, steps, info = False, 0, 0, {}
             while not done:
                 steps += 1
                 if args.viz:
                     time.sleep(0.01)
-                obs = env.observe(False)
-                action = loaded_graph.architecture(torch.from_numpy(obs).cpu())
-                rewards, dones = env.step(action.cpu().detach().numpy())
+                action = loaded_graph.architecture(torch.from_numpy(obs))
+                obs, rewards, dones, infos = env.step(action.detach().numpy())
                 total_reward += rewards[0]
                 done = dones[0]
+                info = infos[0]
             episode_rewards.append(total_reward)
             episode_steps.append(steps)
             print('----------------------------------------------------')
+            pprint(info)
             print('{:<40} {:>6}'.format("average ll reward: ", '{:0.10f}'.format(total_reward)))
             print('{:<40} {:>6}'.format("time elapsed [sec]: ", '{:6.4f}'.format(steps * 0.01)))
             print('----------------------------------------------------\n')
