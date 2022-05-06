@@ -32,6 +32,7 @@ if __name__ == '__main__':
     # create environment from the configuration file
     cfg['environment']['num_envs'] = 1
     cfg['environment']['k_0'] = 1.0
+    cfg['environment']['render'] = args.viz
 
     env = VecEnv(
         rsg_a1.RaisimGymEnv(home_path + "/rsc", dump(cfg['environment'], Dumper=RoundTripDumper)),

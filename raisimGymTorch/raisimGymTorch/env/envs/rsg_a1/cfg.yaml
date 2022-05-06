@@ -2,7 +2,7 @@ seed: 1
 record_video: False
 
 environment:
-  render: True
+  render: False
   visualize_command: False
   num_envs: 100
   eval_every_n: 100

@@ -86,7 +86,7 @@ public:
         // P_x, P_y, P_z, 1.0, A_x, A_y, A_z, FR_hip, FR_thigh, FR_calf, FL_hip, FL_thigh, FL_calf,
         // RR_hip, RR_thigh, RR_calf, RL_hip, RL_thigh, RL_calf. gc_init_ << 0.0, 0.0, 0.39, 1.0,
         // 0.0, 0.0, 0.0, 0.06, 0.6, -1.2, -0.06, 0.6, -1.2, 0.06, 0.6, -1.2, -0.06, 0.6, -1.2;
-        gc_init_ << x0Dist_(randomGenerator_), y0Dist_(randomGenerator_), 0.45, 1.0, 0.0, 0.0, 0.0,
+        gc_init_ << 0.0, 0.0, 0.45, 1.0, 0.0, 0.0, 0.0,
             0.06, 0.6, -1.2, -0.06, 0.6, -1.2, 0.06, 0.6, -1.2, -0.06, 0.6, -1.2;
 
         /// set pd gains
@@ -218,11 +218,13 @@ public:
         a1_->setPdTarget(pTarget_, vTarget_);
 
         for (int i = 0; i < int(control_dt_ / simulation_dt_ + 1e-10); i++) {
-            if (server_)
+            if (server_) {
                 server_->lockVisualizationServerMutex();
+            }
             world_->integrate();
-            if (server_)
+            if (server_) {
                 server_->unlockVisualizationServerMutex();
+            }
         }
 
         // Record values for next step calculations

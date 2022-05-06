@@ -25,8 +25,9 @@ public:
     }
 
     virtual ~RaisimGymEnv() {
-        if (server_)
+        if (server_) {
             server_->killServer();
+        }
     };
 
     /////// implement these methods /////////
