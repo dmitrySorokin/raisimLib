@@ -60,7 +60,7 @@ if __name__ == '__main__':
     # env = NormalizedActions(gym.make(args.env_name))
     # directories
     # check if gpu is available
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    args.cuda = True if torch.cuda.is_available() else False
 
     # directories
     task_path = os.path.dirname(os.path.realpath(__file__))
