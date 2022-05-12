@@ -64,12 +64,16 @@ class QNetwork(nn.Module):
 class GaussianPolicy(nn.Module):
     def __init__(self, num_inputs, num_actions, hidden_dim, action_space=None):
         super(GaussianPolicy, self).__init__()
-        
-        self.linear1 = nn.Linear(num_inputs, hidden_dim)
-        self.linear2 = nn.Linear(hidden_dim, hidden_dim)
 
-        self.mean_linear = nn.Linear(hidden_dim, num_actions)
-        self.log_std_linear = nn.Linear(hidden_dim, num_actions)
+        self.architecture = nn.Sequential(
+            nn.Linear(num_inputs, hidden_dim),
+            nn.LeakyReLU(inplace=True),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.LeakyReLU(inplace=True),
+            nn.Linear(hidden_dim, num_actions)
+        )
+
+        self.log_std = nn.Parameter(torch.zeros(num_actions))
 
         self.apply(weights_init_)
 
@@ -84,11 +88,8 @@ class GaussianPolicy(nn.Module):
                 (action_space.high + action_space.low) / 2.)
 
     def forward(self, state):
-        x = F.relu(self.linear1(state))
-        x = F.relu(self.linear2(x))
-        mean = self.mean_linear(x)
-        log_std = self.log_std_linear(x)
-        log_std = torch.clamp(log_std, min=LOG_SIG_MIN, max=LOG_SIG_MAX)
+        mean = self.architecture(state)
+        log_std = torch.clamp(self.log_std, min=LOG_SIG_MIN, max=LOG_SIG_MAX)
         return mean, log_std
 
     def sample(self, state):
