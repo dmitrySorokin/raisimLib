@@ -76,7 +76,6 @@ if __name__ == '__main__':
         device=device,
         log_dir=saver.data_dir,
         shuffle_batch=True,
-        learning_rate=1e-4
     )
 
     if weight_path is not None:
