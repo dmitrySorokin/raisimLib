@@ -119,7 +119,7 @@ class PPO:
                 # KL
                 kl = torch.sum(
                     torch.log(sigma_batch / old_sigma_batch + 1.e-5) + (torch.square(old_sigma_batch) + torch.square(old_mu_batch - mu_batch)) / (2.0 * torch.square(sigma_batch)) - 0.5, axis=-1)
-                kl_mean = torch.mean(kl)
+                kl_mean = torch.mean(kl) * 0
 
                     #if kl_mean > self.desired_kl * 2.0:
                     #    self.learning_rate = max(1e-5, self.learning_rate / 1.2)
