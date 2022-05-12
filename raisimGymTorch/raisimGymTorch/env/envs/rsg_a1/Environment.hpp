@@ -233,7 +233,7 @@ public:
         rewards_.record("BaseForwardVelocity", calculateBaseForwardVelocityCost());
         rewards_.record("BaseLateralAndRotation", -calculateBaseLateralAndRotationCost());
         rewards_.record("BaseHeight", -0.25 * calculateBaseHeightCost());
-        // rewards_.record("Torque", -0.25*calculateTorqueCost());
+        rewards_.record("Torque", -0.25 * calculateTorqueCost());
         rewards_.record("JointSpeed", -0.25 * calculateJointSpeedCost());
         rewards_.record("AirTime", calculateAirTimeCost());
         rewards_.record("Slip", -0.25 * calculateSlipCost());
