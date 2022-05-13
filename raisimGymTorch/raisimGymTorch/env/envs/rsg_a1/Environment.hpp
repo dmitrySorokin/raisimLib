@@ -435,12 +435,12 @@ private:
     //
 
     inline double calculateBaseForwardVelocityCost() {
-        return std::max(std::min(bodyLinearVel_[0], 0.6), 1e-7);
+        return std::max(std::min(bodyAngularVel_[2], 0.6), 1e-7);
     }
 
     inline double calculateBaseLateralAndRotationCost() {
         return k_c *
-               (bodyLinearVel_[1] * bodyLinearVel_[1] + bodyAngularVel_[2] * bodyAngularVel_[2]);
+               (bodyLinearVel_[0] * bodyLinearVel_[0] + bodyLinearVel_[1] * bodyLinearVel_[1]);
     }
 
     // inline double logisticKernel(double value) {
@@ -492,8 +492,9 @@ private:
             // We only use xy velocity components
             vel[2] = 0.0;
 
-            if (footContactState_[contactSequentialIndex_[footBodyIndex]] == false)
+            if (footContactState_[contactSequentialIndex_[footBodyIndex]] == false) {
                 footAirTimeCost += (p_f_hat - pos[2]) * (p_f_hat - pos[2]) * vel.squaredNorm();
+            }
         }
 
         return k_c * footAirTimeCost;
@@ -508,8 +509,9 @@ private:
             // We only use xy velocity components
             vel[2] = 0.0;
 
-            if (footContactState_[contactSequentialIndex_[footBodyIndex]] == true)
+            if (footContactState_[contactSequentialIndex_[footBodyIndex]] == true) {
                 footSlipCost += vel.squaredNorm();
+            }
         }
 
         return k_c * footSlipCost;
