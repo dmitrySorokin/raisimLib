@@ -10,7 +10,7 @@ import gym
 
 
 class RaisimGymVecEnv:
-    def __init__(self, impl, seed=0, update_stats=True):
+    def __init__(self, impl, seed=0, update_stats=False):
         if platform.system() == 'Darwin':
             os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
         self.update_stats = update_stats

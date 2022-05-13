@@ -18,10 +18,8 @@ template <class ChildEnvironment>
 class VectorizedEnvironment {
 
 public:
-    explicit VectorizedEnvironment(
-        std::string resourceDir, std::string cfg,
-        bool normalizeObservation = true)
-            : resourceDir_(resourceDir), cfgString_(cfg), normalizeObservation_(normalizeObservation) {
+    explicit VectorizedEnvironment(std::string resourceDir, std::string cfg)
+        : resourceDir_(resourceDir), cfgString_(cfg) {
         Yaml::Parse(cfg_, cfg);
         render_ = cfg_["render"].template As<bool>();
         init();
@@ -71,15 +69,13 @@ public:
             "Observation/Action dimension must be defined in the constructor of each environment!")
 
         /// ob scaling
-        if (normalizeObservation_) {
-            obMean_.setZero(obDim_);
-            obVar_.setOnes(obDim_);
-            recentMean_.setZero(obDim_);
-            recentVar_.setZero(obDim_);
-            delta_.setZero(obDim_);
-            epsilon.setZero(obDim_);
-            epsilon.setConstant(1e-8);
-        }
+        obMean_.setZero(obDim_);
+        obVar_.setOnes(obDim_);
+        recentMean_.setZero(obDim_);
+        recentVar_.setZero(obDim_);
+        delta_.setZero(obDim_);
+        epsilon.setZero(obDim_);
+        epsilon.setConstant(1e-8);
     }
 
     // resets all environments and returns observation
@@ -95,9 +91,7 @@ public:
             environments_[i]->observe(ob.row(i));
         }
 
-        if (normalizeObservation_) {
-            updateObservationStatisticsAndNormalize(ob, updateStatistics);
-        }
+        updateObservationStatisticsAndNormalize(ob, updateStatistics);
     }
 
     void step(
@@ -255,7 +249,6 @@ private:
     std::string cfgString_;
 
     /// observation running mean
-    bool normalizeObservation_ = true;
     EigenVec obMean_;
     EigenVec obVar_;
     float obCount_ = 1e-4;
