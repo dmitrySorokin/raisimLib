@@ -33,7 +33,7 @@ environment:
     Orientation:
       coeff: 0 #2.4
     ZAcceleration:
-      coeff: 0 #2.0
+      coeff: 2.0
     Slip:
       coeff: 0.4
     AirTime:
