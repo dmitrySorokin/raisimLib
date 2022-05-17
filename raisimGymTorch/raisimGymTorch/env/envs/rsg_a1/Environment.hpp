@@ -249,7 +249,7 @@ public:
         // Apply random force to the COM
         auto applyingForceDecision = decisionDist_(randomGenerator_);
         if (applyingForceDecision < 0.5) {
-            auto externalEffort = 2000 * Eigen::VectorXd::Random(3);
+            auto externalEffort = 1500 * Eigen::VectorXd::Random(3);
             a1_->setExternalForce(a1_->getBodyIdx("base"), externalEffort);
         }
 
