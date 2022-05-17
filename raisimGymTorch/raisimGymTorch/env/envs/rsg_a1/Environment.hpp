@@ -510,7 +510,7 @@ private:
             vel[2] = 0.0;
 
             if (footContactState_[contactSequentialIndex_[footBodyIndex]] == true) {
-                footSlipCost += vel.squaredNorm();
+                footSlipCost += vel.squaredNorm() + bodyAngularVel_[2];
             }
         }
 
