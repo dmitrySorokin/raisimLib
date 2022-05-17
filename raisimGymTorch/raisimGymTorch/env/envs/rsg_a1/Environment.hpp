@@ -206,7 +206,7 @@ public:
     float step(const Eigen::Ref<EigenVec>& action) final {
         /// action scaling
         Eigen::VectorXd pTarget12 = action.cast<double>();
-        pTarget12 = pTarget12.cwiseMin(1).cwiseMax(-1);
+        // pTarget12 = pTarget12.cwiseMin(1).cwiseMax(-1);
         pTarget12 = actionMean_ + pTarget12.cwiseProduct(actionStd_);
         pTarget_.tail(nJoints_) = pTarget12;
 
