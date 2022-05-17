@@ -17,19 +17,19 @@ environment:
   k_d: 0.997
   reward:
     BaseForwardVelocity:
-      coeff: 2
+      coeff: 0.75
     BaseLateralAndRotation:
       coeff: 0 #0.9
     Work:
-      coeff: 0 #0.50
+      coeff: 0.50
     GroundImpact:
       coeff: 0.00006
     Smoothness:
-      coeff: 0 #0.03
+      coeff: 0.03
     ActionMagnitude:
-      coeff: 0 #0.005
+      coeff: 0.005
     JointSpeed:
-      coeff: 0 #0.006
+      coeff: 0.006
     Orientation:
       coeff: 0 #2.4
     ZAcceleration:
@@ -40,7 +40,7 @@ environment:
       coeff: 0.0 #0.3
       desired_foot_height: 0.07
     Torque:
-      coeff: 0.015
+      coeff: 0.002
     BaseHeight:
       coeff: 4.0
   terrain:
