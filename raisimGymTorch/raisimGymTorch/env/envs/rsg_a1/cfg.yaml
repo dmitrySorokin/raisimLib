@@ -17,7 +17,7 @@ environment:
   k_d: 0.997
   reward:
     BaseForwardVelocity:
-      coeff: 0.75
+      coeff: 2
     BaseLateralAndRotation:
       coeff: 0.9
     Work:
@@ -42,7 +42,7 @@ environment:
     Torque:
       coeff: 0.005
     BaseHeight:
-      coeff: 0 #4.0
+      coeff: 4.0
   terrain:
     frequency: 1.0
     zScale: 0.2
