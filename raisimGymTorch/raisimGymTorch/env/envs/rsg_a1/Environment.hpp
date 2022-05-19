@@ -195,11 +195,7 @@ public:
 
         rewards_.reset();
 
-        if (decisionDist_(randomGenerator_) < 0.5) {
-            targetAngularVelocity_ = 1.0;
-        } else {
-            targetAngularVelocity_ = -1.0;
-        }
+        targetAngularVelocity_ = decisionDist_(randomGenerator_) < 0.5 ? 1.0 : -1.0;
     }
 
     void curriculumUpdate() final {
