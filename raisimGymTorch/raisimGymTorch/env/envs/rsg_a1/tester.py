@@ -16,6 +16,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-w', '--weight', help='trained weight path', type=str, default='')
     parser.add_argument('--viz', action='store_true')
+    parser.add_argument('--episodes', default=10, type=int)
     args = parser.parse_args()
 
     # check if gpu is available
@@ -68,7 +69,7 @@ if __name__ == '__main__':
         episode_rewards = []
         episode_steps = []
         episode_info = defaultdict(list)
-        for episode in trange(10):
+        for episode in trange(args.episodes):
             done, total_reward, steps, info = False, 0, 0, {}
             while not done:
                 steps += 1
