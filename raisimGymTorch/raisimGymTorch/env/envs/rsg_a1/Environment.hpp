@@ -249,7 +249,7 @@ public:
         // Apply random force to the COM
         auto applyingForceDecision = decisionDist_(randomGenerator_);
         if (applyingForceDecision < 0.5) {
-            auto externalEffort = 1200 * Eigen::VectorXd::Random(3);
+            auto externalEffort = 1000 * Eigen::VectorXd::Random(3);
             a1_->setExternalForce(a1_->getBodyIdx("base"), externalEffort);
         }
 
@@ -323,7 +323,7 @@ public:
         // Terminal condition
         double euler_angles[3];
         raisim::quatToEulerVec(&gc_[3], euler_angles);
-        if (std::abs(euler_angles[1]) > 0.2 || std::abs(gc_init_[2] - gc_[2]) > 0.1) {
+        if (gc_[2] < 0.28 || fabs(euler_angles[1]) > 0.2) {
             terminalReward = float(terminalRewardCoeff_);
             return true;
         }
