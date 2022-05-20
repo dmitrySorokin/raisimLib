@@ -34,7 +34,9 @@ environment:
       coeff: 0 #2.4
     ZAcceleration:
       coeff: 2.0
-    Slip:
+    LinearSlip:
+      coeff: 0.4
+    AngularSlip:
       coeff: 0.4
     AirTime:
       coeff: 0.0 #0.3

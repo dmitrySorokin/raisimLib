@@ -235,7 +235,8 @@ public:
         rewards_.record("Torque", -0.25 * calculateTorqueCost());
         rewards_.record("JointSpeed", -0.25 * calculateJointSpeedCost());
         rewards_.record("AirTime", calculateAirTimeCost());
-        rewards_.record("Slip", -0.25 * calculateSlipCost());
+        rewards_.record("LinearSlip", -0.25 * calculateLinearSlipCost());
+        rewards_.record("AngularSlip", -0.25 * calculateAngularSlipCost());
         rewards_.record("Orientation", -0.25 * calculateOrientationCost());
         rewards_.record("Smoothness", -0.25 * calculateSmoothnessCost());
 
@@ -248,7 +249,7 @@ public:
         // Apply random force to the COM
         auto applyingForceDecision = decisionDist_(randomGenerator_);
         if (applyingForceDecision < 0.5) {
-            auto externalEffort = 1000 * Eigen::VectorXd::Random(3);
+            auto externalEffort = 1200 * Eigen::VectorXd::Random(3);
             a1_->setExternalForce(a1_->getBodyIdx("base"), externalEffort);
         }
 
@@ -500,7 +501,7 @@ private:
         return k_c * footAirTimeCost;
     }
 
-    inline double calculateSlipCost() {
+    inline double calculateLinearSlipCost() {
         double footSlipCost = 0.0;
         for (auto footBodyIndex : contactIndices_) {
             raisim::Vec<3> vel;
@@ -510,7 +511,24 @@ private:
             vel[2] = 0.0;
 
             if (footContactState_[contactSequentialIndex_[footBodyIndex]] == true) {
-                footSlipCost += vel.squaredNorm() + std::abs(bodyAngularVel_[2]);
+                footSlipCost += vel.squaredNorm();
+            }
+        }
+
+        return k_c * footSlipCost;
+    }
+
+    inline double calculateAngularSlipCost() {
+        double footSlipCost = 0.0;
+        for (auto footBodyIndex : contactIndices_) {
+            raisim::Vec<3> vel;
+            a1_->getVelocity(footBodyIndex, vel);
+
+            // We only use xy velocity components
+            vel[2] = 0.0;
+
+            if (footContactState_[contactSequentialIndex_[footBodyIndex]] == true) {
+                footSlipCost += std::abs(bodyAngularVel_[2]);
             }
         }
 
