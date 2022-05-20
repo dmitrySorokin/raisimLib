@@ -323,7 +323,7 @@ public:
         // Terminal condition
         double euler_angles[3];
         raisim::quatToEulerVec(&gc_[3], euler_angles);
-        if (gc_[2] < 0.28 || fabs(euler_angles[1]) > 0.2) {
+        if (gc_[2] < 0.28) {
             terminalReward = float(terminalRewardCoeff_);
             return true;
         }
