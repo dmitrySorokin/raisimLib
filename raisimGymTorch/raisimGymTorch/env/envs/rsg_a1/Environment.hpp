@@ -21,7 +21,8 @@
  *                         joint velocities,             n = 12, si = 21
  *                         contacts binary vector,       n =  4, si = 33
  *                         previous action,              n = 12, si = 37
- *                         target angular velocity,      n = 1, si = 49 ] total 50
+ *                         target angular velocity,      n =  1, si = 49
+ *                         target linear velocity,       n =  1, si = 50 ] total 51
  *
  *   action space      = [ joint angles                  n = 12, si =  0 ] total 12
  */
@@ -99,7 +100,7 @@ public:
         a1_->setGeneralizedForce(Eigen::VectorXd::Zero(gvDim_));
 
         /// MUST BE DONE FOR ALL ENVIRONMENTS
-        obDim_ = 50;  /// convention described on top
+        obDim_ = 51;  /// convention described on top
         actionDim_ = nJoints_;
         actionMean_.setZero(actionDim_);
         actionStd_.setZero(actionDim_);
@@ -119,7 +120,8 @@ public:
             Eigen::VectorXd::Constant(12, 0.0),  // joint velocity
             Eigen::VectorXd::Constant(4, 0.0),   // contacts binary vector
             Eigen::VectorXd::Constant(12, 0.0),  // previous action
-            0;                                   // target angular velocity
+            0,                                   // target angular velocity
+            0;                                   // target linear velocity
 
 
         obStd_ << 0.01,                          // height
@@ -130,7 +132,8 @@ public:
             Eigen::VectorXd::Constant(12, .01),  // joint velocity
             Eigen::VectorXd::Constant(4, 1.0),   // contacts binary vector
             Eigen::VectorXd::Constant(12, 1.0),  // previous action
-            1.0;                                 // target angular velocity
+            1.0,                                 // target angular velocity
+            1.0;                                 // target linear velocity
 
         groundImpactForces_.setZero();
         previousGroundImpactForces_.setZero();
@@ -195,7 +198,20 @@ public:
 
         rewards_.reset();
 
-        targetAngularVelocity_ = decisionDist_(randomGenerator_) < 0.5 ? 1.0 : -1.0;
+        const double rnd = decisionDist_(randomGenerator_);
+        if (rnd < 0.25) {
+            targetAngularVelocity_ = 1.0;
+            targetLinearVelocity_ = 0.0;
+        } else if (rnd < 0.5) {
+            targetAngularVelocity_ = -1.0;
+            targetLinearVelocity_ = 0.0;
+        } else if (rnd < 0.75) {
+            targetAngularVelocity_ = 0.0;
+            targetLinearVelocity_ = 1.0;
+        } else {
+            targetAngularVelocity_ = 0.0;
+            targetLinearVelocity_ = -1.0;
+        }
     }
 
     void curriculumUpdate() final {
@@ -311,7 +327,8 @@ public:
             velocitiesNoised,                  // joint velocity 12
             contacts,                          // contacts binary vector 4
             previousJointPositions_,           // previous action 12
-            targetAngularVelocity_;            // target angular velocity
+            targetAngularVelocity_,            // target angular velocity
+            targetLinearVelocity_;             // target linear velocity
     }
 
     void observe(Eigen::Ref<EigenVec> ob) final {
@@ -355,6 +372,7 @@ private:
     double k_c, k_d;
 
     double targetAngularVelocity_ = 1.0;
+    double targetLinearVelocity_ = 0.0;
 
     std::random_device randomGenerator_;
     std::uniform_real_distribution<double> x0Dist_;
@@ -436,37 +454,15 @@ private:
     //
 
     inline double calculateBaseForwardVelocityCost() {
-        return std::max(std::min(bodyAngularVel_[2] * targetAngularVelocity_, 0.6), 1e-7);
+        return std::max(
+            std::min(bodyAngularVel_[2] * targetAngularVelocity_ + bodyLinearVel_[0] * targetLinearVelocity_, 0.6),
+        1e-7);
     }
 
     inline double calculateBaseLateralAndRotationCost() {
-        return k_c *
-               (bodyLinearVel_[0] * bodyLinearVel_[0] + bodyLinearVel_[1] * bodyLinearVel_[1]);
+        return k_c * (bodyLinearVel_[0] * bodyLinearVel_[0] + bodyLinearVel_[1] * bodyLinearVel_[1]) * std::abs(targetAngularVelocity_) +
+            k_c * (bodyLinearVel_[1] * bodyLinearVel_[1] + bodyAngularVel_[2] * bodyAngularVel_[2]) * std::abs(targetLinearVelocity_);
     }
-
-    // inline double logisticKernel(double value) {
-    //   return -1.0 / (exp(value) + 2.0 + exp(-value));
-    // }
-
-    // inline double calculateBaseLinearVelocityCost() {
-    //   auto dt = control_dt_;
-    //   auto c_v1 = dt * rewards_.getCoeff("BaseLinearVelocity");
-    //   auto c_v2 = dt * cfg_["reward"]["BaseLinearVelocity"]["second_coeff"].template
-    //   As<double>();
-
-    //   Eigen::Vector3d desiredLinearVel;
-    //   desiredLinearVel << command[0], command[1], 0.0;
-
-    //   return logisticKernel(fabs(c_v2*(bodyLinearVel_ - desiredLinearVel).norm()));
-    // }
-
-    // inline double calculateBaseAngularVelocityCost() {
-    //   auto dt = control_dt_;
-    //   auto c_w = dt * rewards_.getCoeff("BaseAngularVelocity");
-
-    //   // TODO: Check if using bodyAngularVel_[2] is correct for angular velocity
-    //   return logisticKernel(fabs(bodyAngularVel_[2] - command[2]));
-    // }
 
     inline double calculateBaseHeightCost() {
         return k_c * (gc_init_[2] - gc_[2]) * (gc_init_[2] - gc_[2]);
