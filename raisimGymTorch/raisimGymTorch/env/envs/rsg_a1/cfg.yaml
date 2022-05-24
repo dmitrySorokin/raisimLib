@@ -44,7 +44,7 @@ environment:
     Torque:
       coeff: 0.002
     BaseHeight:
-      coeff: 40
+      coeff: 4.0
   terrain:
     frequency: 1.0
     zScale: 0.2
