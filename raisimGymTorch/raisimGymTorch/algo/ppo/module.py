@@ -142,8 +142,7 @@ class FilmedMLP(nn.Module):
         torch.nn.init.constant_(module.bias, 0)
 
     def forward(self, t):
-        state = t[:, :-2]
-        task = t[:, -2:]
+        state, task = torch.split(t, [49, 2], dim=-1)
         state_h = self.preproc(state)
         task_weight = self.weight(task)
         task_bias = self.bias(task)
