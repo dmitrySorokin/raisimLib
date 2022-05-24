@@ -100,34 +100,48 @@ class MLP(nn.Module):
         return self.architecture(t)
 
 
-class FilmedMLP(nn.Module):
+class MultiheadMLP(nn.Module):
     def __init__(self, actionvation_fn, input_size, output_size):
-        super(FilmedMLP, self).__init__()
+        super(MultiheadMLP, self).__init__()
         self.activation_fn = actionvation_fn
 
-        self.preproc = nn.Sequential(
+        self.head1 = nn.Sequential(
             nn.Linear(input_size - 2, 512),
             nn.LeakyReLU(),
-            nn.Linear(512, 512),
-            nn.LeakyReLU(),
-        )
-
-        self.postproc = nn.Sequential(
             nn.Linear(512, 512),
             nn.LeakyReLU(),
             nn.Linear(512, output_size)
         )
 
-        self.weight = nn.Sequential(
-            nn.Linear(2, 512),
+        self.head2 = nn.Sequential(
+            nn.Linear(input_size - 2, 512),
             nn.LeakyReLU(),
-            nn.Linear(512, 512)
+            nn.Linear(512, 512),
+            nn.LeakyReLU(),
+            nn.Linear(512, output_size)
         )
 
-        self.bias = nn.Sequential(
-            nn.Linear(2, 512),
+        self.head3 = nn.Sequential(
+            nn.Linear(input_size - 2, 512),
             nn.LeakyReLU(),
-            nn.Linear(512, 512)
+            nn.Linear(512, 512),
+            nn.LeakyReLU(),
+            nn.Linear(512, output_size)
+        )
+
+        self.head4 = nn.Sequential(
+            nn.Linear(input_size - 2, 512),
+            nn.LeakyReLU(),
+            nn.Linear(512, 512),
+            nn.LeakyReLU(),
+            nn.Linear(512, output_size)
+        )
+
+        self.attn = nn.Sequential(
+            nn.Linear(2, 16),
+            nn.LeakyReLU(),
+            nn.Linear(16, 4),
+            nn.Softmax()
         )
 
         self.apply(self.init_weights)
@@ -143,11 +157,9 @@ class FilmedMLP(nn.Module):
 
     def forward(self, t):
         state, task = torch.split(t, [49, 2], dim=-1)
-        state_h = self.preproc(state)
-        task_weight = self.weight(task)
-        task_bias = self.bias(task)
-        hidden = task_weight * state_h + task_bias
-        return self.postproc(hidden)
+        state_h1, state_h2, state_h3, state_h4 = self.head1(state), self.head2(state), self.head3(state), self.head4(state)
+        probs1, probs2, probs3, probs4 = torch.split(self.attn(task), [1, 1, 1, 1], dim=-1)
+        return state_h1 * probs1 + state_h2 * probs2 + state_h3 * probs3 + state_h4 * probs4
 
 
 class MultivariateGaussianDiagonalCovariance(nn.Module):
