@@ -16,24 +16,24 @@ class Actor:
         self.action_mean = None
 
     def sample(self, obs):
-        self.action_mean = self.architecture.architecture(obs).cpu().numpy()
+        self.action_mean = self.architecture(obs).cpu().numpy()
         actions, log_prob = self.distribution.sample(self.action_mean)
         return actions, log_prob
 
     def evaluate(self, obs, actions):
-        self.action_mean = self.architecture.architecture(obs)
+        self.action_mean = self.architecture(obs)
         return self.distribution.evaluate(self.action_mean, actions)
 
     def parameters(self):
         return [*self.architecture.parameters(), *self.distribution.parameters()]
 
     def noiseless_action(self, obs):
-        return self.architecture.architecture(torch.from_numpy(obs).to(self.device))
+        return self.architecture(torch.from_numpy(obs).to(self.device))
 
     def save_deterministic_graph(self, file_name, example_input, device='cpu'):
-        transferred_graph = torch.jit.trace(self.architecture.architecture.to(device), example_input)
+        transferred_graph = torch.jit.trace(self.architecture.to(device), example_input)
         torch.jit.save(transferred_graph, file_name)
-        self.architecture.architecture.to(self.device)
+        self.architecture.to(self.device)
 
     def deterministic_parameters(self):
         return self.architecture.parameters()
@@ -57,10 +57,10 @@ class Critic:
         self.architecture.to(device)
 
     def predict(self, obs):
-        return self.architecture.architecture(obs).detach()
+        return self.architecture(obs).detach()
 
     def evaluate(self, obs):
-        return self.architecture.architecture(obs)
+        return self.architecture(obs)
 
     def parameters(self):
         return [*self.architecture.parameters()]
@@ -95,6 +95,60 @@ class MLP(nn.Module):
     def init_weights(sequential, scales):
         [torch.nn.init.orthogonal_(module.weight, gain=scales[idx]) for idx, module in
          enumerate(mod for mod in sequential if isinstance(mod, nn.Linear))]
+
+    def forward(self, t):
+        return self.architecture(t)
+
+
+class FilmedMLP(nn.Module):
+    def __init__(self, actionvation_fn, input_size, output_size):
+        super(FilmedMLP, self).__init__()
+        self.activation_fn = actionvation_fn
+
+        self.preproc = nn.Sequential(
+            nn.Linear(input_size - 2, 512),
+            nn.LeakyReLU(),
+            nn.Linear(512, 512),
+            nn.LeakyReLU(),
+        )
+
+        self.postproc = nn.Sequential(
+            nn.Linear(512, 512),
+            nn.LeakyReLU(),
+            nn.Linear(512, output_size)
+        )
+
+        self.weight = nn.Sequential(
+            nn.Linear(2, 512),
+            nn.LeakyReLU(),
+            nn.Linear(512, 512)
+        )
+
+        self.bias = nn.Sequential(
+            nn.Linear(2, 512),
+            nn.LeakyReLU(),
+            nn.Linear(512, 512)
+        )
+
+        self.apply(self.init_weights)
+        self.input_shape = [input_size]
+        self.output_shape = [output_size]
+
+    @staticmethod
+    def init_weights(module):
+        if not isinstance(module, nn.Linear):
+            return
+        torch.nn.init.orthogonal_(module.weight, gain=np.sqrt(2))
+        torch.nn.init.constant_(module.bias, 0)
+
+    def forward(self, t):
+        state = t[:, :-2]
+        task = t[:, -2:]
+        state_h = self.preproc(state)
+        task_weight = self.weight(task)
+        task_bias = self.bias(task)
+        hidden = task_weight * state_h + task_bias
+        return self.postproc(hidden)
 
 
 class MultivariateGaussianDiagonalCovariance(nn.Module):
