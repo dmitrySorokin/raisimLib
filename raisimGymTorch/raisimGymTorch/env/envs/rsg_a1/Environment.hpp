@@ -215,7 +215,7 @@ public:
     }
 
     void curriculumUpdate() final {
-        k_c = std::min(pow(k_c, k_d), 1.0);
+        k_c = std::min(k_c + 1./3000., 1.0);
     }
 
     float step(const Eigen::Ref<EigenVec>& action) final {
