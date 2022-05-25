@@ -5,6 +5,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 from .storage import RolloutStorage
+from .pcgrad import PCGrad
 
 
 class PPO:
@@ -39,7 +40,7 @@ class PPO:
         else:
             self.batch_sampler = self.storage.mini_batch_generator_inorder
 
-        self.optimizer = optim.Adam([*self.actor.parameters(), *self.critic.parameters()], lr=learning_rate)
+        self.optimizer = PCGrad(optim.Adam([*self.actor.parameters(), *self.critic.parameters()], lr=learning_rate))
         self.device = device
 
         # env parameters
@@ -133,7 +134,7 @@ class PPO:
                         elif kl_mean < self.desired_kl / 2.0 and kl_mean > 0.0:
                             self.learning_rate = min(1e-2, self.learning_rate * 1.2)
 
-                        for param_group in self.optimizer.param_groups:
+                        for param_group in self.optimizer._optim.param_groups:
                             param_group['lr'] = self.learning_rate
 
                 # Surrogate loss
@@ -154,22 +155,11 @@ class PPO:
                     value_loss = (returns_batch - value_batch).pow(2)
 
                 loss = surrogate_loss + self.value_loss_coef * value_loss - self.entropy_coef * entropy_batch
-                first_loss = loss[first_ids].mean()
-                first_loss = first_loss / first_loss.detach()
-                second_loss = loss[second_ids].mean()
-                second_loss = second_loss / second_loss.detach()
-                third_loss = loss[third_ids].mean()
-                third_loss = third_loss / third_loss.detach()
-                forth_loss = loss[forth_ids].mean()
-                forth_loss = forth_loss / forth_loss.detach()
-                with torch.no_grad():
-                    tot_loss = loss.mean()
-
-                weighted_loss = (first_loss + second_loss + third_loss + forth_loss) * tot_loss / 4
+                vec_loss = torch.tensor([loss[first_ids].mean(), loss[second_ids].mean(), loss[third_ids].mean(), loss[forth_ids].mean()], requires_grad=True)
 
                 # Gradient step
                 self.optimizer.zero_grad()
-                weighted_loss.backward()
+                self.optimizer.pc_backward(vec_loss)
                 nn.utils.clip_grad_norm_([*self.actor.parameters(), *self.critic.parameters()], self.max_grad_norm)
                 self.optimizer.step()
 
