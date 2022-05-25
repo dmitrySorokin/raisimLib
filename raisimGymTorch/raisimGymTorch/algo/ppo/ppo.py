@@ -109,6 +109,11 @@ class PPO:
             for actor_obs_batch, critic_obs_batch, actions_batch, old_sigma_batch, old_mu_batch, current_values_batch, advantages_batch, returns_batch, old_actions_log_prob_batch \
                     in self.batch_sampler(self.num_mini_batches):
 
+                (first_ids,) = torch.where(actor_obs_batch[:,-2] == 1)
+                (second_ids,) = torch.where(actor_obs_batch[:, -2] == -1)
+                (third_ids,) = torch.where(actor_obs_batch[:, -1] == 1)
+                (forth_ids,) = torch.where(actor_obs_batch[:, -1] == -1)
+
                 actions_log_prob_batch, entropy_batch = self.actor.evaluate(actor_obs_batch, actions_batch)
                 value_batch = self.critic.evaluate(critic_obs_batch)
 
@@ -136,7 +141,7 @@ class PPO:
                 surrogate = -torch.squeeze(advantages_batch) * ratio
                 surrogate_clipped = -torch.squeeze(advantages_batch) * torch.clamp(ratio, 1.0 - self.clip_param,
                                                                                    1.0 + self.clip_param)
-                surrogate_loss = torch.max(surrogate, surrogate_clipped).mean()
+                surrogate_loss = torch.max(surrogate, surrogate_clipped)
 
                 # Value function loss
                 if self.use_clipped_value_loss:
@@ -144,21 +149,33 @@ class PPO:
                                                                                                     self.clip_param)
                     value_losses = (value_batch - returns_batch).pow(2)
                     value_losses_clipped = (value_clipped - returns_batch).pow(2)
-                    value_loss = torch.max(value_losses, value_losses_clipped).mean()
+                    value_loss = torch.max(value_losses, value_losses_clipped)
                 else:
-                    value_loss = (returns_batch - value_batch).pow(2).mean()
+                    value_loss = (returns_batch - value_batch).pow(2)
 
-                loss = surrogate_loss + self.value_loss_coef * value_loss - self.entropy_coef * entropy_batch.mean()
+                loss = surrogate_loss + self.value_loss_coef * value_loss - self.entropy_coef * entropy_batch
+                first_loss = loss[first_ids].mean()
+                first_loss = first_loss / first_loss.detach()
+                second_loss = loss[second_ids].mean()
+                second_loss = second_loss / second_loss.detach()
+                third_loss = loss[third_ids].mean()
+                third_loss = third_loss / third_loss.detach()
+                forth_loss = loss[forth_ids].mean()
+                forth_loss = forth_loss / forth_loss.detach()
+                with torch.no_grad():
+                    tot_loss = loss.mean()
+
+                weighted_loss = (first_loss + second_loss + third_loss + forth_loss) * tot_loss / 4
 
                 # Gradient step
                 self.optimizer.zero_grad()
-                loss.backward()
+                weighted_loss.backward()
                 nn.utils.clip_grad_norm_([*self.actor.parameters(), *self.critic.parameters()], self.max_grad_norm)
                 self.optimizer.step()
 
                 if log_this_iteration:
-                    mean_value_loss += value_loss.item()
-                    mean_surrogate_loss += surrogate_loss.item()
+                    mean_value_loss += value_loss.mean().item()
+                    mean_surrogate_loss += surrogate_loss.mean().item()
 
         if log_this_iteration:
             num_updates = self.num_learning_epochs * self.num_mini_batches

@@ -48,7 +48,7 @@ if __name__ == '__main__':
     total_steps = n_steps * env.num_envs
 
     actor = ppo_module.Actor(
-        ppo_module.MultiheadMLP(nn.LeakyReLU, ob_dim, act_dim),
+        ppo_module.MLP([512, 512], nn.LeakyReLU, ob_dim, act_dim),
         ppo_module.MultivariateGaussianDiagonalCovariance(
             act_dim, env.num_envs, 1.0, NormalSampler(act_dim), cfg['seed']),
         device
