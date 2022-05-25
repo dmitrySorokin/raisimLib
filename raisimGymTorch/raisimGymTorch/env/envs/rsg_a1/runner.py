@@ -122,7 +122,7 @@ if __name__ == '__main__':
                 'actor_architecture_state_dict': actor.architecture.state_dict(),
                 'actor_distribution_state_dict': actor.distribution.state_dict(),
                 'critic_architecture_state_dict': critic.architecture.state_dict(),
-                'optimizer_state_dict': ppo.optimizer._optim.state_dict(),
+                'optimizer_state_dict': ppo.optimizer.state_dict(),
             }, saver.data_dir + '/full_' + str(update) + '.pt')
             env.save_scaling(saver.data_dir, str(update))
 
