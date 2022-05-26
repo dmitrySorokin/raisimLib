@@ -98,7 +98,7 @@ public:
         a1_->setGeneralizedForce(Eigen::VectorXd::Zero(gvDim_));
 
         /// MUST BE DONE FOR ALL ENVIRONMENTS
-        obDim_ = 49;  /// convention described on top
+        obDim_ = 50;  /// convention described on top
         actionDim_ = nJoints_;
         actionMean_.setZero(actionDim_);
         actionStd_.setZero(actionDim_);
@@ -117,7 +117,8 @@ public:
             Eigen::VectorXd::Constant(6, 0.0),   // body linear & angular velocity
             Eigen::VectorXd::Constant(12, 0.0),  // joint velocity
             Eigen::VectorXd::Constant(4, 0.0),   // contacts binary vector
-            Eigen::VectorXd::Constant(12, 0.0);  // previous action
+            Eigen::VectorXd::Constant(12, 0.0),  // previous action
+            0.6;
 
         obStd_ << 0.01,                          // height
             Eigen::VectorXd::Constant(2, 1.0),   // body roll & pitch
@@ -126,7 +127,9 @@ public:
             1.0 / 2.5, 1.0 / 2.5, 1.0 / 2.5,     // body angular velocity
             Eigen::VectorXd::Constant(12, .01),  // joint velocity
             Eigen::VectorXd::Constant(4, 1.0),   // contacts binary vector
-            Eigen::VectorXd::Constant(12, 1.0);  // previous action
+            Eigen::VectorXd::Constant(12, 1.0),  // previous action
+            0.28;
+
 
         groundImpactForces_.setZero();
         previousGroundImpactForces_.setZero();
@@ -197,6 +200,7 @@ public:
         // std::cout << "----------\n\n";
 
         rewards_.reset();
+        targetSpeed_ = 0.2 + decisionDist_(randomGenerator_);
     }
 
     void curriculumUpdate() final {
@@ -310,7 +314,8 @@ public:
             bodyAngularVelocityNoised,         // angular velocity 3
             velocitiesNoised,                  // joint velocity 12
             contacts,                          // contacts binary vector 4
-            previousJointPositions_;           // previous action 12
+            previousJointPositions_,           // previous action 12
+            targetSpeed_;
     }
 
     void observe(Eigen::Ref<EigenVec> ob) final {
@@ -352,6 +357,7 @@ private:
 
     // Curriculum factors
     double k_c, k_d;
+    double targetSpeed_ = 0.6;
 
     Eigen::Vector3d command_;
 
@@ -435,7 +441,7 @@ private:
     //
 
     inline double calculateBaseForwardVelocityCost() {
-        return std::max(std::min(bodyLinearVel_[0], 0.6), 1e-7);
+        return std::max(std::min(bodyLinearVel_[0], targetSpeed_), 1e-7) / targetSpeed_ * 0.6;
     }
 
     inline double calculateBaseLateralAndRotationCost() {
